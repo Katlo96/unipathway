@@ -11,8 +11,9 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.6",
-    "expo": "~55.0.4",
-    "expo-router": "~55.0.3",
+    "expo": "~55.0.5",
+    "expo-linear-gradient": "~55.0.8",
+    "expo-router": "~55.0.4",
     "expo-status-bar": "~55.0.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
