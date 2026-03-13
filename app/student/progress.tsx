@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,15 @@ import {
   Platform,
   ScrollView,
   useColorScheme,
+  type PressableStateCallbackType,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import {
+  StudentMenuProvider,
+  useStudentMenu,
+} from '../../components/student/StudentMenu';
 
 // ── Design System ──────────────────────────────────────────────────────────────
 const BASE_SPACING = 4;
@@ -37,7 +42,7 @@ const radii = {
 const elevations = Platform.select({
   ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8 },
   android: { elevation: 6 },
-  web: { boxShadow: '0 6px 16px rgba(0,0,0,0.1)' },
+  web: { boxShadow: '0 6px 16px rgba(0,0,0,0.1)' } as any,
   default: {},
 });
 
@@ -60,22 +65,42 @@ const MARKS: Mark[] = [
   { id: '4', subject: 'English', assessment: 'Final Exam', score: 82, date: '20/12/2025' },
 ];
 
-export default function Progress() {
-  const { width } = useWindowDimensions();
-  const scheme = useColorScheme() || 'light';
+function getPressableState(state: PressableStateCallbackType) {
+  const hovered = (state as any).hovered === true;
+  return { pressed: state.pressed, hovered };
+}
 
-  const colors = useMemo(() => ({
-    background: scheme === 'light' ? '#F8FCFD' : '#0A111A',
-    surface: scheme === 'light' ? '#FFFFFF' : '#1A232E',
-    surfaceAlt: scheme === 'light' ? '#F4F8FA' : '#222B36',
-    textPrimary: scheme === 'light' ? '#0A111A' : '#EAF2F8',
-    textSecondary: scheme === 'light' ? '#4A6572' : '#A0B4C0',
-    textMuted: scheme === 'light' ? '#7A919E' : '#7A919E',
-    primary: '#4A9FC6',
-    primaryText: '#FFFFFF',
-    border: scheme === 'light' ? 'rgba(10,17,26,0.08)' : 'rgba(234,242,248,0.12)',
-    accent: scheme === 'light' ? '#EAF6F8' : '#2A3A48',
-  }), [scheme]);
+export default function Progress() {
+  return (
+    <StudentMenuProvider>
+      <ProgressContent />
+    </StudentMenuProvider>
+  );
+}
+
+function ProgressContent() {
+  const { width } = useWindowDimensions();
+  const rawScheme = useColorScheme();
+  const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
+  const { openMenu } = useStudentMenu();
+
+  const colors = useMemo(
+    () => ({
+      background: scheme === 'light' ? '#F8FCFD' : '#0A111A',
+      surface: scheme === 'light' ? '#FFFFFF' : '#1A232E',
+      surfaceAlt: scheme === 'light' ? '#F4F8FA' : '#222B36',
+      textPrimary: scheme === 'light' ? '#0A111A' : '#EAF2F8',
+      textSecondary: scheme === 'light' ? '#4A6572' : '#A0B4C0',
+      textMuted: scheme === 'light' ? '#7A919E' : '#7A919E',
+      primary: '#4A9FC6',
+      primaryText: '#FFFFFF',
+      border: scheme === 'light' ? 'rgba(10,17,26,0.08)' : 'rgba(234,242,248,0.12)',
+      accent: scheme === 'light' ? '#EAF6F8' : '#2A3A48',
+      cardTint: scheme === 'light' ? 'rgba(74,159,198,0.08)' : 'rgba(74,159,198,0.14)',
+      headerButtonBg: scheme === 'light' ? '#FFFFFF' : '#1A232E',
+    }),
+    [scheme]
+  );
 
   const uiMode = useMemo(() => {
     if (width <= breakpoints.mobileMax) return 'mobile';
@@ -84,10 +109,13 @@ export default function Progress() {
   }, [width]);
 
   const isMobile = uiMode === 'mobile';
+  const isTablet = uiMode === 'tablet';
   const isDesktop = uiMode === 'desktop';
 
-  const pagePadding = isMobile ? spacing(5) : spacing(8);
+  const pagePadding = isMobile ? spacing(5) : isTablet ? spacing(6) : spacing(8);
   const maxWidth = isDesktop ? maxContentWidth : width;
+  const gridColumns = isDesktop ? 2 : 1;
+  const markCardWidth = `${100 / gridColumns}%` as `${number}%`;
 
   const averageScore = useMemo(() => {
     if (!MARKS.length) return 0;
@@ -104,31 +132,124 @@ export default function Progress() {
         <ScrollView
           contentContainerStyle={{ padding: pagePadding, paddingBottom: spacing(10) }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={isDesktop}
         >
           <View style={{ maxWidth, alignSelf: 'center', width: '100%' }}>
-            <Text style={[typography.title, { color: colors.textPrimary, marginBottom: spacing(2) }]}>
-              Progress
-            </Text>
+            <View style={[styles.header, isMobile ? styles.headerMobile : styles.headerDesktop]}>
+              <View style={styles.headerCopy}>
+                <Text style={[typography.title, { color: colors.textPrimary }]}>Progress</Text>
+                <Text
+                  style={[
+                    typography.subtitle,
+                    {
+                      color: colors.textSecondary,
+                      marginTop: spacing(1),
+                    },
+                  ]}
+                >
+                  Track your academic performance over time
+                </Text>
+              </View>
 
-            <Text style={[typography.subtitle, { color: colors.textSecondary, marginBottom: spacing(4) }]}>
-              Track your academic performance over time
-            </Text>
+              <View style={styles.headerActions}>
+                <Pressable
+                  onPress={openMenu}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open student menu"
+                  style={({ pressed }) => {
+                    const { hovered } = getPressableState({ pressed } as PressableStateCallbackType);
+                    return [
+                      styles.headerMenuButton,
+                      {
+                        backgroundColor: colors.headerButtonBg,
+                        borderColor: colors.border,
+                      },
+                      hovered && Platform.OS === 'web' ? styles.hoverLift : null,
+                      pressed ? styles.pressed : null,
+                    ];
+                  }}
+                >
+                  <Ionicons name="menu-outline" size={22} color={colors.textPrimary} />
+                  {!isMobile ? (
+                    <Text
+                      style={[
+                        typography.label,
+                        {
+                          color: colors.textPrimary,
+                          marginLeft: spacing(2),
+                        },
+                      ]}
+                    >
+                      Menu
+                    </Text>
+                  ) : null}
+                </Pressable>
 
-            {/* Average Score Card */}
-            <View style={[styles.card, { marginBottom: spacing(6) }]}>
+                <Pressable
+                  onPress={() => router.back()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                  style={({ pressed }) => {
+                    const { hovered } = getPressableState({ pressed } as PressableStateCallbackType);
+                    return [
+                      styles.headerMenuButton,
+                      {
+                        backgroundColor: colors.headerButtonBg,
+                        borderColor: colors.border,
+                      },
+                      hovered && Platform.OS === 'web' ? styles.hoverLift : null,
+                      pressed ? styles.pressed : null,
+                    ];
+                  }}
+                >
+                  <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+                  {!isMobile ? (
+                    <Text
+                      style={[
+                        typography.label,
+                        {
+                          color: colors.textPrimary,
+                          marginLeft: spacing(2),
+                        },
+                      ]}
+                    >
+                      Back
+                    </Text>
+                  ) : null}
+                </Pressable>
+              </View>
+            </View>
+
+            <View
+              style={[
+                styles.card,
+                {
+                  marginBottom: spacing(6),
+                  backgroundColor: colors.cardTint,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <Text style={[typography.label, { color: colors.textSecondary }]}>Current Average</Text>
               <Text style={[typography.hero, { color: colors.primary, marginTop: spacing(1) }]}>
                 {averageScore}%
               </Text>
             </View>
 
-            {/* Recent Marks */}
             <Text style={[typography.title, { color: colors.textPrimary, marginBottom: spacing(3) }]}>
               Recent Marks
             </Text>
 
             {MARKS.length === 0 ? (
-              <View style={styles.emptyState}>
+              <View
+                style={[
+                  styles.emptyState,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <Ionicons name="trending-up-outline" size={48} color={colors.textMuted} />
                 <Text style={[typography.body, { color: colors.textPrimary, marginTop: spacing(4) }]}>
                   No marks yet
@@ -137,8 +258,12 @@ export default function Progress() {
                   onPress={handleAddMark}
                   style={({ pressed }) => [
                     styles.addButton,
-                    pressed && styles.pressed,
-                    { marginTop: spacing(4) },
+                    {
+                      marginTop: spacing(4),
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary,
+                    },
+                    pressed ? styles.pressed : null,
                   ]}
                 >
                   <Ionicons name="add-circle-outline" size={20} color={colors.primaryText} />
@@ -149,35 +274,66 @@ export default function Progress() {
               </View>
             ) : (
               <View style={[styles.grid, { gap: spacing(4) }]}>
-                {MARKS.map(mark => (
-                  <View key={mark.id} style={styles.markCard}>
-                    <Text style={[typography.body, { fontWeight: '700', color: colors.textPrimary }]}>
-                      {mark.subject}
-                    </Text>
+                {MARKS.map((mark) => (
+                  <View
+                    key={mark.id}
+                    style={[
+                      styles.gridItem,
+                      {
+                        width: markCardWidth,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.markCard,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[typography.body, { fontWeight: '700', color: colors.textPrimary }]}>
+                        {mark.subject}
+                      </Text>
 
-                    <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing(1) }]}>
-                      {mark.assessment}
-                    </Text>
+                      <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing(1) }]}>
+                        {mark.assessment}
+                      </Text>
 
-                    <Text style={[typography.body, { color: colors.primary, marginTop: spacing(2), fontWeight: '700' }]}>
-                      {mark.score}%
-                    </Text>
+                      <Text
+                        style={[
+                          typography.body,
+                          {
+                            color: colors.primary,
+                            marginTop: spacing(2),
+                            fontWeight: '700',
+                          },
+                        ]}
+                      >
+                        {mark.score}%
+                      </Text>
 
-                    <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing(1) }]}>
-                      {mark.date}
-                    </Text>
+                      <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing(1) }]}>
+                        {mark.date}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </View>
             )}
 
-            {/* Add Mark CTA */}
             <Pressable
               onPress={handleAddMark}
               style={({ pressed }) => [
                 styles.addButton,
-                pressed && styles.pressed,
-                { marginTop: spacing(6), alignSelf: 'center' },
+                {
+                  marginTop: spacing(6),
+                  alignSelf: 'center',
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary,
+                },
+                pressed ? styles.pressed : null,
               ]}
             >
               <Ionicons name="add-circle-outline" size={24} color={colors.primaryText} />
@@ -195,28 +351,69 @@ export default function Progress() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
+
+  header: {
+    marginBottom: spacing(6),
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing(4),
+  },
+  headerMobile: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  headerDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(3),
+  },
+  headerMenuButton: {
+    minHeight: 48,
+    minWidth: 48,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    paddingHorizontal: spacing(4),
+    paddingVertical: spacing(3),
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    ...elevations,
+  },
+
   card: {
     padding: spacing(5),
     borderRadius: radii.lg,
-    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(10,17,26,0.12)',
     ...elevations,
   },
+
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginHorizontal: -spacing(2),
+  },
+  gridItem: {
+    paddingHorizontal: spacing(2),
+    minWidth: 0,
   },
   markCard: {
-    flex: 1,
-    minWidth: 280,
+    minHeight: 148,
     padding: spacing(5),
     borderRadius: radii.lg,
-    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(10,17,26,0.12)',
+    marginBottom: spacing(4),
     ...elevations,
   },
+
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -224,12 +421,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing(6),
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: '#4A9FC6',
   },
+
   emptyState: {
     alignItems: 'center',
     padding: spacing(8),
-    marginTop: spacing(8),
+    marginTop: spacing(2),
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    ...elevations,
   },
-  pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
+
+  hoverLift: {
+    transform: [{ translateY: -1 }],
+  },
+  pressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.98 }],
+  },
 });

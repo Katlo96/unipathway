@@ -1,4 +1,3 @@
-// applications.tsx
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -12,11 +11,15 @@ import {
   Animated,
   type PressableStateCallbackType,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import {
+  StudentMenuProvider,
+  useStudentMenu,
+} from '../../components/student/StudentMenu';
 
 // ── Design System ──────────────────────────────────────────────────────────────
 const BASE_SPACING = 4;
@@ -40,9 +43,14 @@ const radii = {
 };
 
 const elevations = Platform.select({
-  ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
   android: { elevation: 3 },
-  web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+  web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' } as any,
   default: {},
 });
 
@@ -62,49 +70,114 @@ interface ApplicationItem {
 }
 
 const DATA: ApplicationItem[] = [
-  { id: '1', university: 'University of Botswana', program: 'Computer Science Program', date: '24 Apr 2026', status: 'Accepted' },
-  { id: '2', university: 'University of Botswana', program: 'Computer Science Program', date: '24 Apr 2026', status: 'Rejected' },
-  { id: '3', university: 'University of Botswana', program: 'Computer Science Program', date: '24 Apr 2026', status: 'Submitted' },
-  { id: '4', university: 'Botho University', program: 'Computer Science Program', date: '24 Apr 2026', status: 'Under review' },
-  { id: '5', university: 'BAC', program: 'Computer Science Program', date: '24 Apr 2026', status: 'Draft' },
+  {
+    id: '1',
+    university: 'University of Botswana',
+    program: 'Computer Science Program',
+    date: '24 Apr 2026',
+    status: 'Accepted',
+  },
+  {
+    id: '2',
+    university: 'University of Botswana',
+    program: 'Computer Science Program',
+    date: '24 Apr 2026',
+    status: 'Rejected',
+  },
+  {
+    id: '3',
+    university: 'University of Botswana',
+    program: 'Computer Science Program',
+    date: '24 Apr 2026',
+    status: 'Submitted',
+  },
+  {
+    id: '4',
+    university: 'Botho University',
+    program: 'Computer Science Program',
+    date: '24 Apr 2026',
+    status: 'Under review',
+  },
+  {
+    id: '5',
+    university: 'BAC',
+    program: 'Computer Science Program',
+    date: '24 Apr 2026',
+    status: 'Draft',
+  },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function getPressableStyle({ pressed }: PressableStateCallbackType) {
-  return [
-    pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
-    // Note: hovered is web-only and not in official types — we skip TS check for it
-    // If you need strong typing, consider a custom Pressable type or separate web component
-  ] as const;
+function getPressableState(state: PressableStateCallbackType) {
+  const hovered = (state as any).hovered === true;
+  return { pressed: state.pressed, hovered };
 }
 
-// Safe color scheme handling
+function getPressableStyle({
+  pressed,
+}: PressableStateCallbackType & { hovered?: boolean }) {
+  return [pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] }] as const;
+}
+
 const statusColors = (scheme: 'light' | 'dark') => ({
-  Accepted: { bg: scheme === 'light' ? '#E8F5E9' : '#1B5E20', text: scheme === 'light' ? '#2E7D32' : '#E8F5E9', accent: '#4CAF50' },
-  Rejected: { bg: scheme === 'light' ? '#FFEBEE' : '#B71C1C', text: scheme === 'light' ? '#C62828' : '#FFEBEE', accent: '#F44336' },
-  Submitted: { bg: scheme === 'light' ? '#E3F2FD' : '#1565C0', text: scheme === 'light' ? '#1565C0' : '#E3F2FD', accent: '#2196F3' },
-  'Under review': { bg: scheme === 'light' ? '#FFF3E0' : '#EF6C00', text: scheme === 'light' ? '#EF6C00' : '#FFF3E0', accent: '#FF9800' },
-  Draft: { bg: scheme === 'light' ? '#FAFAFA' : '#424242', text: scheme === 'light' ? '#616161' : '#FAFAFA', accent: '#9E9E9E' },
+  Accepted: {
+    bg: scheme === 'light' ? '#E8F5E9' : '#1B5E20',
+    text: scheme === 'light' ? '#2E7D32' : '#E8F5E9',
+    accent: '#4CAF50',
+  },
+  Rejected: {
+    bg: scheme === 'light' ? '#FFEBEE' : '#B71C1C',
+    text: scheme === 'light' ? '#C62828' : '#FFEBEE',
+    accent: '#F44336',
+  },
+  Submitted: {
+    bg: scheme === 'light' ? '#E3F2FD' : '#1565C0',
+    text: scheme === 'light' ? '#1565C0' : '#E3F2FD',
+    accent: '#2196F3',
+  },
+  'Under review': {
+    bg: scheme === 'light' ? '#FFF3E0' : '#EF6C00',
+    text: scheme === 'light' ? '#EF6C00' : '#FFF3E0',
+    accent: '#FF9800',
+  },
+  Draft: {
+    bg: scheme === 'light' ? '#FAFAFA' : '#424242',
+    text: scheme === 'light' ? '#616161' : '#FAFAFA',
+    accent: '#9E9E9E',
+  },
 });
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ── Public Export ──────────────────────────────────────────────────────────────
 export default function ApplicationsScreen() {
-  const { width } = useWindowDimensions();
-  const colorScheme = useColorScheme();
-  // Fix: safely convert 'unspecified' → 'light' (common fallback)
-  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
+  return (
+    <StudentMenuProvider>
+      <ApplicationsContent />
+    </StudentMenuProvider>
+  );
+}
 
-  const colors = useMemo(() => ({
-    background: scheme === 'light' ? '#FAFCFE' : '#121212',
-    surface: scheme === 'light' ? '#FFFFFF' : '#1E1E1E',
-    textPrimary: scheme === 'light' ? '#212121' : '#E0E0E0',
-    textSecondary: scheme === 'light' ? '#757575' : '#BDBDBD',
-    textMuted: scheme === 'light' ? '#9E9E9E' : '#757575',
-    border: scheme === 'light' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)',
-    primary: '#2196F3',
-    accent: scheme === 'light' ? '#E3F2FD' : '#263238',
-    status: statusColors(scheme),
-  }), [scheme]);
+// ── Main Component ─────────────────────────────────────────────────────────────
+function ApplicationsContent() {
+  const { width } = useWindowDimensions();
+  const { openMenu } = useStudentMenu();
+  const colorScheme = useColorScheme();
+  const scheme: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
+
+  const colors = useMemo(
+    () => ({
+      background: scheme === 'light' ? '#FAFCFE' : '#121212',
+      surface: scheme === 'light' ? '#FFFFFF' : '#1E1E1E',
+      textPrimary: scheme === 'light' ? '#212121' : '#E0E0E0',
+      textSecondary: scheme === 'light' ? '#757575' : '#BDBDBD',
+      textMuted: scheme === 'light' ? '#9E9E9E' : '#757575',
+      border: scheme === 'light' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)',
+      primary: '#2196F3',
+      accent: scheme === 'light' ? '#E3F2FD' : '#263238',
+      status: statusColors(scheme),
+      headerButtonBg: scheme === 'light' ? '#FFFFFF' : '#1E1E1E',
+    }),
+    [scheme]
+  );
 
   const breakpoint = useMemo<Breakpoint>(() => {
     if (width <= breakpoints.mobileMax) return 'mobile';
@@ -121,7 +194,7 @@ export default function ApplicationsScreen() {
   const gridColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = useMemo(() => DATA.find(item => item.id === selectedId) || null, [selectedId]);
+  const selected = useMemo(() => DATA.find((item) => item.id === selectedId) || null, [selectedId]);
 
   const statusCounts = useMemo(() => {
     return DATA.reduce((acc, item) => {
@@ -133,19 +206,26 @@ export default function ApplicationsScreen() {
   const fadeAnim = useMemo(() => new Animated.Value(0), []);
   React.useEffect(() => {
     if (selected) {
+      fadeAnim.setValue(0);
       Animated.spring(fadeAnim, { toValue: 1, useNativeDriver: true }).start();
     }
   }, [selected, fadeAnim]);
 
   const handleSelect = (id: string) => {
     if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
-    setSelectedId(prev => (prev === id ? null : id));
+    setSelectedId((prev) => (prev === id ? null : id));
   };
 
   const handleViewDetails = (item: ApplicationItem) => {
     router.push({
       pathname: '/student/application-details',
-      params: { id: item.id, university: item.university, program: item.program, date: item.date, status: item.status },
+      params: {
+        id: item.id,
+        university: item.university,
+        program: item.program,
+        date: item.date,
+        status: item.status,
+      },
     });
   };
 
@@ -158,15 +238,22 @@ export default function ApplicationsScreen() {
       <View style={[styles.emptyIcon, { backgroundColor: colors.accent, borderColor: colors.border }]}>
         <Ionicons name="document-text-outline" size={spacing(8)} color={colors.textPrimary} />
       </View>
-      <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing(4) }]}>No Applications Yet</Text>
-      <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center', marginTop: spacing(2) }]}>
+      <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing(4) }]}>
+        No Applications Yet
+      </Text>
+      <Text
+        style={[
+          typography.body,
+          { color: colors.textSecondary, textAlign: 'center', marginTop: spacing(2) },
+        ]}
+      >
         Get started by submitting your first application.
       </Text>
       <Pressable
         onPress={handleNewApplication}
         style={({ pressed }) => [
           styles.primaryButton,
-          { backgroundColor: colors.primary },
+          { backgroundColor: colors.primary, marginTop: spacing(5) },
           ...getPressableStyle({ pressed }),
         ]}
         accessibilityRole="button"
@@ -181,7 +268,9 @@ export default function ApplicationsScreen() {
     const { bg, text } = colors.status[status];
     return (
       <View style={[styles.chip, { backgroundColor: bg, borderColor: colors.border }]}>
-        <Text style={[typography.caption, { color: text, fontWeight: '700' }]}>{status} ({count})</Text>
+        <Text style={[typography.caption, { color: text, fontWeight: '700' }]}>
+          {status} ({count})
+        </Text>
       </View>
     );
   };
@@ -204,18 +293,28 @@ export default function ApplicationsScreen() {
         accessibilityLabel={`View ${item.program} at ${item.university}`}
       >
         <View style={styles.cardHeader}>
-          <Text style={[typography.subtitle, { color: colors.textPrimary }]} numberOfLines={1}>{item.university}</Text>
+          <Text style={[typography.subtitle, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>
+            {item.university}
+          </Text>
           <View style={[styles.statusBadge, { backgroundColor: bg }]}>
             <Text style={[typography.caption, { color: text }]}>{item.status}</Text>
           </View>
         </View>
-        <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing(1) }]} numberOfLines={2}>
+
+        <Text
+          style={[typography.body, { color: colors.textSecondary, marginTop: spacing(1) }]}
+          numberOfLines={2}
+        >
           {item.program}
         </Text>
+
         <View style={[styles.cardFooter, { marginTop: spacing(2) }]}>
           <Ionicons name="calendar-outline" size={spacing(4)} color={colors.textMuted} />
-          <Text style={[typography.caption, { color: colors.textMuted, marginLeft: spacing(1) }]}>{item.date}</Text>
+          <Text style={[typography.caption, { color: colors.textMuted, marginLeft: spacing(1) }]}>
+            {item.date}
+          </Text>
         </View>
+
         {!isDesktop && (
           <Pressable
             onPress={() => handleViewDetails(item)}
@@ -235,21 +334,48 @@ export default function ApplicationsScreen() {
 
   const DetailsSidebar = () => {
     if (!selected) return null;
-    const { accent } = colors.status[selected.status];
+
     return (
-      <Animated.View style={[styles.sidebar, { opacity: fadeAnim, backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Animated.View
+        style={[
+          styles.sidebar,
+          {
+            opacity: fadeAnim,
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+      >
         <Text style={[typography.title, { color: colors.textPrimary }]}>Application Details</Text>
+
         <View style={{ marginTop: spacing(4) }}>
           <Text style={[typography.subtitle, { color: colors.textPrimary }]}>{selected.university}</Text>
-          <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing(1) }]}>{selected.program}</Text>
+          <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing(1) }]}>
+            {selected.program}
+          </Text>
+
           <View style={[styles.cardFooter, { marginTop: spacing(2) }]}>
             <Ionicons name="calendar-outline" size={spacing(4)} color={colors.textMuted} />
-            <Text style={[typography.caption, { color: colors.textMuted, marginLeft: spacing(1) }]}>{selected.date}</Text>
+            <Text style={[typography.caption, { color: colors.textMuted, marginLeft: spacing(1) }]}>
+              {selected.date}
+            </Text>
           </View>
-          <View style={[styles.statusBadgeLarge, { backgroundColor: colors.status[selected.status].bg, marginTop: spacing(3) }]}>
-            <Text style={[typography.label, { color: colors.status[selected.status].text }]}>{selected.status}</Text>
+
+          <View
+            style={[
+              styles.statusBadgeLarge,
+              {
+                backgroundColor: colors.status[selected.status].bg,
+                marginTop: spacing(3),
+              },
+            ]}
+          >
+            <Text style={[typography.label, { color: colors.status[selected.status].text }]}>
+              {selected.status}
+            </Text>
           </View>
         </View>
+
         <Pressable
           onPress={() => handleViewDetails(selected)}
           style={({ pressed }) => [
@@ -260,6 +386,7 @@ export default function ApplicationsScreen() {
         >
           <Text style={[typography.label, { color: '#FFFFFF' }]}>View Full Details</Text>
         </Pressable>
+
         <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing(4) }]}>
           Keep your documents updated for better chances.
         </Text>
@@ -271,24 +398,64 @@ export default function ApplicationsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: contentPaddingHorizontal, paddingBottom: spacing(10) }}
+          contentContainerStyle={{
+            paddingHorizontal: contentPaddingHorizontal,
+            paddingTop: spacing(5),
+            paddingBottom: spacing(10),
+          }}
           showsVerticalScrollIndicator={isDesktop}
         >
           <View style={[styles.content, { maxWidth: contentMaxWidth, alignSelf: 'center' }]}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => [styles.backButton, ...getPressableStyle({ pressed })]}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <Ionicons name="arrow-back" size={spacing(6)} color={colors.textPrimary} />
-              </Pressable>
-              <View style={styles.headerText}>
-                <Text style={[typography.hero, { color: colors.textPrimary }]}>Applications</Text>
-                <Text style={[typography.subtitle, { color: colors.textSecondary }]}>Track your progress</Text>
+            <View style={[styles.header, isMobile && styles.headerMobile]}>
+              <View style={styles.headerLeft}>
+                <Pressable
+                  onPress={openMenu}
+                  style={({ pressed }) => {
+                    const { hovered } = getPressableState({ pressed } as PressableStateCallbackType);
+                    return [
+                      styles.backButton,
+                      {
+                        backgroundColor: colors.headerButtonBg,
+                        borderColor: colors.border,
+                      },
+                      hovered && Platform.OS === 'web' ? styles.hoverLift : null,
+                      ...getPressableStyle({ pressed }),
+                    ];
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open menu"
+                >
+                  <Ionicons name="menu-outline" size={spacing(6)} color={colors.textPrimary} />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.back()}
+                  style={({ pressed }) => {
+                    const { hovered } = getPressableState({ pressed } as PressableStateCallbackType);
+                    return [
+                      styles.backButton,
+                      {
+                        backgroundColor: colors.headerButtonBg,
+                        borderColor: colors.border,
+                      },
+                      hovered && Platform.OS === 'web' ? styles.hoverLift : null,
+                      ...getPressableStyle({ pressed }),
+                    ];
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                >
+                  <Ionicons name="arrow-back" size={spacing(6)} color={colors.textPrimary} />
+                </Pressable>
+
+                <View style={styles.headerText}>
+                  <Text style={[typography.hero, { color: colors.textPrimary }]}>Applications</Text>
+                  <Text style={[typography.subtitle, { color: colors.textSecondary }]}>
+                    Track your progress
+                  </Text>
+                </View>
               </View>
+
               <Pressable
                 onPress={handleNewApplication}
                 style={({ pressed }) => [
@@ -304,22 +471,26 @@ export default function ApplicationsScreen() {
               </Pressable>
             </View>
 
-            {/* Status Chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
               {Object.entries(statusCounts).map(([status, count]) => (
                 <StatusChip key={status} status={status as AppStatus} count={count} />
               ))}
             </ScrollView>
 
-            {/* Main Content */}
             <View style={[styles.mainLayout, isDesktop && { flexDirection: 'row', gap: spacing(6) }]}>
               <View style={{ flex: 1 }}>
                 {DATA.length === 0 ? (
                   <EmptyState />
                 ) : (
-                  <View style={{ flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: spacing(4) }}>
-                    {DATA.map(item => (
-                      <View key={item.id} style={{ flexBasis: `${100 / gridColumns}%` }}>
+                  <View
+                    style={{
+                      flexDirection: isMobile ? 'column' : 'row',
+                      flexWrap: 'wrap',
+                      gap: spacing(4),
+                    }}
+                  >
+                    {DATA.map((item) => (
+                      <View key={item.id} style={{ flexBasis: `${100 / gridColumns}%`, minWidth: 0 }}>
                         <ApplicationCard item={item} />
                       </View>
                     ))}
@@ -327,7 +498,7 @@ export default function ApplicationsScreen() {
                 )}
               </View>
 
-              {isDesktop && <DetailsSidebar />}
+              {isDesktop ? <DetailsSidebar /> : null}
             </View>
           </View>
         </ScrollView>
@@ -336,22 +507,41 @@ export default function ApplicationsScreen() {
   );
 }
 
-// ── Styles (unchanged from your last working version) ───────────────────────────
+// ── Styles ─────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: { flex: 1 },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing(4),
+    gap: spacing(4),
   },
-  headerText: { flex: 1, marginLeft: spacing(4) },
+  headerMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  headerText: {
+    flex: 1,
+    marginLeft: spacing(4),
+    minWidth: 0,
+  },
   backButton: {
     padding: spacing(2),
     borderRadius: radii.md,
+    borderWidth: 1,
+    marginRight: spacing(2),
   },
+
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -359,6 +549,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(2),
     borderRadius: radii.lg,
   },
+
   chipsContainer: {
     flexDirection: 'row',
     marginBottom: spacing(4),
@@ -370,7 +561,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: spacing(2),
   },
+
   mainLayout: {},
+
   card: {
     padding: spacing(4),
     borderRadius: radii.xl,
@@ -380,6 +573,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing(2),
   },
   statusBadge: {
     paddingHorizontal: spacing(2),
@@ -404,12 +598,15 @@ const styles = StyleSheet.create({
     padding: spacing(2),
     borderRadius: radii.md,
   },
+
   sidebar: {
-    width: '100%',
+    width: 320,
+    maxWidth: 320,
     padding: spacing(4),
     borderRadius: radii.xl,
     borderWidth: 1,
   },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -422,5 +619,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+
+  hoverLift: {
+    transform: [{ translateY: -1 }],
   },
 });

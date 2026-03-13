@@ -15,6 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import {
+  StudentMenuProvider,
+  useStudentMenu,
+} from '../../components/student/StudentMenu';
 
 type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 type NotifType = 'info' | 'warning' | 'success';
@@ -138,7 +142,7 @@ function getColors(scheme: 'light' | 'dark'): ThemeColors {
 function getElevation(scheme: 'light' | 'dark'): ViewStyle {
   return Platform.select<ViewStyle>({
     ios: {
-      shadowColor: scheme === 'light' ? '#000' : '#000',
+      shadowColor: '#000',
       shadowOpacity: scheme === 'light' ? 0.08 : 0.18,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 10 },
@@ -157,12 +161,21 @@ function getElevation(scheme: 'light' | 'dark'): ViewStyle {
 }
 
 export default function StudentNotificationsScreen() {
+  return (
+    <StudentMenuProvider>
+      <StudentNotificationsContent />
+    </StudentMenuProvider>
+  );
+}
+
+function StudentNotificationsContent() {
   const { width, height } = useWindowDimensions();
   const rawScheme = useColorScheme();
-const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
+  const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
   const colors = useMemo(() => getColors(scheme), [scheme]);
   const elevation = useMemo(() => getElevation(scheme), [scheme]);
   const bp = useMemo(() => getBreakpoint(width), [width]);
+  const { openMenu } = useStudentMenu();
 
   const ui = useMemo(() => {
     const isMobile = bp === 'mobile';
@@ -256,12 +269,20 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                 },
               ]}
             >
-              <HeaderIconButton
-                icon="chevron-back"
-                label="Go back"
-                colors={colors}
-                onPress={() => router.back()}
-              />
+              <View style={styles.topBarLeft}>
+                <HeaderIconButton
+                  icon="menu-outline"
+                  label="Open menu"
+                  colors={colors}
+                  onPress={openMenu}
+                />
+                <HeaderIconButton
+                  icon="chevron-back"
+                  label="Go back"
+                  colors={colors}
+                  onPress={() => router.back()}
+                />
+              </View>
 
               <View style={styles.headerCenter}>
                 <Text style={[styles.topTitle, typography.title, { color: colors.text, fontSize: ui.titleSize }]}>
@@ -295,6 +316,13 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                     </View>
 
                     <View style={styles.quickActionsRow}>
+                      <ActionButton
+                        icon="menu-outline"
+                        label="Open menu"
+                        tone="neutral"
+                        colors={colors}
+                        onPress={openMenu}
+                      />
                       <ActionButton
                         icon="trash-outline"
                         label="Clear read"
@@ -352,6 +380,13 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                         <Text style={[typography.section, { color: colors.text }]}>Actions</Text>
                         <View style={{ marginTop: spacing(3), gap: spacing(2) }}>
                           <ActionButton
+                            icon="menu-outline"
+                            label="Open menu"
+                            tone="neutral"
+                            colors={colors}
+                            onPress={openMenu}
+                          />
+                          <ActionButton
                             icon="checkmark-done-outline"
                             label="Mark all as read"
                             tone="primary"
@@ -379,8 +414,8 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                               {filter === 'all'
                                 ? 'All notifications'
                                 : filter === 'important'
-                                ? 'Important'
-                                : 'Deadlines'}
+                                  ? 'Important'
+                                  : 'Deadlines'}
                             </Text>
                             <Text
                               style={[
@@ -740,15 +775,15 @@ function NotificationCard({
     item.type === 'success'
       ? 'checkmark-circle-outline'
       : item.type === 'warning'
-      ? 'warning-outline'
-      : 'information-circle-outline';
+        ? 'warning-outline'
+        : 'information-circle-outline';
 
   const iconBackground =
     item.type === 'success'
       ? colors.successSoft
       : item.type === 'warning'
-      ? colors.warningSoft
-      : colors.primarySoft;
+        ? colors.warningSoft
+        : colors.primarySoft;
 
   return (
     <Pressable
@@ -861,6 +896,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing(3),
     paddingVertical: spacing(3),
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
   },
   headerCenter: {
     flex: 1,

@@ -12,11 +12,14 @@ import {
   type PressableStateCallbackType,
   useColorScheme,
   type ViewStyle,
-  type TextStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import {
+  StudentMenuProvider,
+  useStudentMenu,
+} from '../../components/student/StudentMenu';
 
 type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 type SettingRoute =
@@ -132,12 +135,21 @@ function getElevation(scheme: 'light' | 'dark'): ViewStyle {
 }
 
 export default function StudentSettingsScreen() {
+  return (
+    <StudentMenuProvider>
+      <StudentSettingsContent />
+    </StudentMenuProvider>
+  );
+}
+
+function StudentSettingsContent() {
   const { width, height } = useWindowDimensions();
   const rawScheme = useColorScheme();
-const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
+  const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
   const colors = useMemo(() => getColors(scheme), [scheme]);
   const elevation = useMemo(() => getElevation(scheme), [scheme]);
   const bp = useMemo(() => getBreakpoint(width), [width]);
+  const { openMenu } = useStudentMenu();
 
   const ui = useMemo(() => {
     const isMobile = bp === 'mobile';
@@ -175,7 +187,9 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
   const openLegal = useCallback((type: 'terms' | 'privacy') => {
     Alert.alert(
       'Coming soon',
-      type === 'terms' ? 'Terms & Conditions screen will be added next.' : 'Privacy Policy screen will be added next.'
+      type === 'terms'
+        ? 'Terms & Conditions screen will be added next.'
+        : 'Privacy Policy screen will be added next.'
     );
   }, []);
 
@@ -280,12 +294,20 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                 },
               ]}
             >
-              <HeaderIconButton
-                icon="chevron-back"
-                label="Go back"
-                colors={colors}
-                onPress={() => router.back()}
-              />
+              <View style={styles.topBarLeft}>
+                <HeaderIconButton
+                  icon="menu-outline"
+                  label="Open menu"
+                  colors={colors}
+                  onPress={openMenu}
+                />
+                <HeaderIconButton
+                  icon="chevron-back"
+                  label="Go back"
+                  colors={colors}
+                  onPress={() => router.back()}
+                />
+              </View>
 
               <View style={styles.headerCenter}>
                 <Text style={[styles.topTitle, typography.title, { color: colors.text, fontSize: ui.titleSize }]}>
@@ -940,6 +962,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing(3),
     paddingVertical: spacing(3),
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
   },
   headerCenter: {
     flex: 1,

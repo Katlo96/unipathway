@@ -17,6 +17,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import {
+  StudentMenuProvider,
+  useStudentMenu,
+} from '../../components/student/StudentMenu';
 
 type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 
@@ -95,7 +99,7 @@ function getColors(scheme: 'light' | 'dark'): ThemeColors {
 function getElevation(scheme: 'light' | 'dark'): ViewStyle {
   return Platform.select<ViewStyle>({
     ios: {
-      shadowColor: scheme === 'light' ? '#000' : '#000',
+      shadowColor: '#000',
       shadowOpacity: scheme === 'light' ? 0.08 : 0.18,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 10 },
@@ -114,12 +118,21 @@ function getElevation(scheme: 'light' | 'dark'): ViewStyle {
 }
 
 export default function StudentProfileScreen() {
+  return (
+    <StudentMenuProvider>
+      <StudentProfileContent />
+    </StudentMenuProvider>
+  );
+}
+
+function StudentProfileContent() {
   const { width, height } = useWindowDimensions();
   const rawScheme = useColorScheme();
-const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
+  const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
   const colors = useMemo(() => getColors(scheme), [scheme]);
   const elevation = useMemo(() => getElevation(scheme), [scheme]);
   const bp = useMemo(() => getBreakpoint(width), [width]);
+  const { openMenu } = useStudentMenu();
 
   const ui = useMemo(() => {
     const isMobile = bp === 'mobile';
@@ -219,12 +232,20 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                   },
                 ]}
               >
-                <HeaderIconButton
-                  icon="chevron-back"
-                  label="Go back"
-                  colors={colors}
-                  onPress={() => router.back()}
-                />
+                <View style={styles.topBarLeft}>
+                  <HeaderIconButton
+                    icon="menu-outline"
+                    label="Open menu"
+                    colors={colors}
+                    onPress={openMenu}
+                  />
+                  <HeaderIconButton
+                    icon="chevron-back"
+                    label="Go back"
+                    colors={colors}
+                    onPress={() => router.back()}
+                  />
+                </View>
 
                 <View style={styles.headerCenter}>
                   <Text style={[styles.topTitle, typography.title, { color: colors.text, fontSize: ui.titleSize }]}>
@@ -345,6 +366,13 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
 
                           <View style={{ marginTop: spacing(3), gap: spacing(2) }}>
                             <ActionButton
+                              icon="menu-outline"
+                              label="Open menu"
+                              tone="neutral"
+                              colors={colors}
+                              onPress={openMenu}
+                            />
+                            <ActionButton
                               icon="link-outline"
                               label="Connect parent/guardian"
                               tone="neutral"
@@ -433,6 +461,13 @@ const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
                           </View>
 
                           <View style={{ marginTop: spacing(4), gap: spacing(2) }}>
+                            <ActionButton
+                              icon="menu-outline"
+                              label="Open menu"
+                              tone="neutral"
+                              colors={colors}
+                              onPress={openMenu}
+                            />
                             <ActionButton
                               icon="link-outline"
                               label="Connect parent/guardian"
@@ -890,6 +925,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing(3),
     paddingVertical: spacing(3),
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
   },
   headerCenter: {
     flex: 1,
