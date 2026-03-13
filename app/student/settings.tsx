@@ -116,7 +116,7 @@ function getColors(scheme: 'light' | 'dark'): ThemeColors {
 function getElevation(scheme: 'light' | 'dark'): ViewStyle {
   return Platform.select<ViewStyle>({
     ios: {
-      shadowColor: scheme === 'light' ? '#000' : '#000',
+      shadowColor: '#000',
       shadowOpacity: scheme === 'light' ? 0.08 : 0.18,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 10 },
@@ -151,28 +151,6 @@ function StudentSettingsContent() {
   const bp = useMemo(() => getBreakpoint(width), [width]);
   const { openMenu } = useStudentMenu();
 
-  const ui = useMemo(() => {
-    const isMobile = bp === 'mobile';
-    const isTablet = bp === 'tablet';
-    const isDesktop = bp === 'desktop';
-
-    return {
-      isMobile,
-      isTablet,
-      isDesktop,
-      shellWidth: isDesktop ? Math.min(MAX_DESKTOP_WIDTH, width - spacing(8) * 2) : width,
-      shellHeight: isDesktop ? Math.min(980, Math.round(height * 0.92)) : height,
-      shellRadius: isDesktop ? radii.xl : 0,
-      shellPadding: isDesktop ? spacing(7) : 0,
-      padX: isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(4),
-      padY: isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(5),
-      gap: isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(4),
-      railWidth: isDesktop ? 320 : 0,
-      titleSize: isDesktop ? 24 : isTablet ? 22 : 20,
-      subtitleSize: isDesktop ? 14 : 13,
-    };
-  }, [bp, width, height]);
-
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [pushNotifs, setPushNotifs] = useState(true);
   const [marketingNotifs, setMarketingNotifs] = useState(false);
@@ -180,25 +158,62 @@ function StudentSettingsContent() {
   const [deadlineReminders, setDeadlineReminders] = useState(true);
   const [activeRoute, setActiveRoute] = useState<SettingRoute>('profile');
 
+  const ui = useMemo(() => {
+    const isMobile = bp === 'mobile';
+    const isTablet = bp === 'tablet';
+    const isDesktop = bp === 'desktop';
+
+    const compactPadX = isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(3);
+    const regularPadX = isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(4);
+
+    const compactPadY = isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(4);
+    const regularPadY = isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(5);
+
+    const compactGap = isDesktop ? spacing(4) : isTablet ? spacing(4) : spacing(3);
+    const regularGap = isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(4);
+
+    return {
+      isMobile,
+      isTablet,
+      isDesktop,
+      compactMode,
+      shellWidth: isDesktop ? Math.min(MAX_DESKTOP_WIDTH, width - spacing(8) * 2) : width,
+      shellHeight: isDesktop ? Math.min(980, Math.round(height * 0.92)) : height,
+      shellRadius: isDesktop ? radii.xl : 0,
+      shellPadding: isDesktop ? spacing(7) : 0,
+      padX: compactMode ? compactPadX : regularPadX,
+      padY: compactMode ? compactPadY : regularPadY,
+      gap: compactMode ? compactGap : regularGap,
+      railWidth: isDesktop ? 320 : 0,
+      titleSize: isDesktop ? 24 : isTablet ? 22 : 20,
+      subtitleSize: isDesktop ? 14 : 13,
+      rowMinHeight: compactMode ? 58 : 68,
+      toggleDescriptionLines: compactMode ? 2 : 3,
+      heroPadding: compactMode ? (isMobile ? spacing(3) : spacing(4)) : isMobile ? spacing(4) : spacing(5),
+      navMinHeight: compactMode ? 48 : 52,
+      sectionTop: compactMode ? spacing(4) : spacing(5),
+    };
+  }, [bp, width, height, compactMode]);
+
   const onChangePassword = useCallback(() => {
-    Alert.alert('Coming soon', 'Change password flow will be added next.');
+    router.push('/student/change-password');
   }, []);
 
   const openLegal = useCallback((type: 'terms' | 'privacy') => {
-    Alert.alert(
-      'Coming soon',
-      type === 'terms'
-        ? 'Terms & Conditions screen will be added next.'
-        : 'Privacy Policy screen will be added next.'
-    );
+    if (type === 'terms') {
+      router.push('/student/terms-conditions');
+      return;
+    }
+
+    router.push('/student/privacy-policy');
   }, []);
 
   const contactSupport = useCallback(() => {
-    Alert.alert('Support', 'Support contact screen will be added next.');
+    router.push('/student/contact-support');
   }, []);
 
   const openFaq = useCallback(() => {
-    Alert.alert('FAQ', 'FAQ screen will be added next.');
+    router.push('/student/faq');
   }, []);
 
   const logout = useCallback(() => {
@@ -371,6 +386,7 @@ function StudentSettingsContent() {
                           label="Profile"
                           active={activeRoute === 'profile'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('profile')}
                         />
                         <NavItem
@@ -378,6 +394,7 @@ function StudentSettingsContent() {
                           label="Notifications"
                           active={activeRoute === 'notifications'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('notifications')}
                         />
                         <NavItem
@@ -385,6 +402,7 @@ function StudentSettingsContent() {
                           label="Change password"
                           active={activeRoute === 'password'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('password')}
                         />
 
@@ -395,6 +413,7 @@ function StudentSettingsContent() {
                           label="Terms & Conditions"
                           active={activeRoute === 'terms'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('terms')}
                         />
                         <NavItem
@@ -402,6 +421,7 @@ function StudentSettingsContent() {
                           label="Privacy Policy"
                           active={activeRoute === 'privacy'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('privacy')}
                         />
 
@@ -412,6 +432,7 @@ function StudentSettingsContent() {
                           label="Contact support"
                           active={activeRoute === 'support'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('support')}
                         />
                         <NavItem
@@ -419,6 +440,7 @@ function StudentSettingsContent() {
                           label="FAQ"
                           active={activeRoute === 'faq'}
                           colors={colors}
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('faq')}
                         />
 
@@ -429,6 +451,7 @@ function StudentSettingsContent() {
                           label="Log out"
                           colors={colors}
                           danger
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('logout')}
                         />
                         <NavItem
@@ -436,6 +459,7 @@ function StudentSettingsContent() {
                           label="Delete account"
                           colors={colors}
                           dangerOutline
+                          minHeight={ui.navMinHeight}
                           onPress={() => navigate('delete')}
                         />
                       </View>
@@ -444,14 +468,20 @@ function StudentSettingsContent() {
                 ) : null}
 
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <HeroPanel colors={colors} elevation={elevation} isMobile={ui.isMobile} />
+                  <HeroPanel
+                    colors={colors}
+                    elevation={elevation}
+                    isMobile={ui.isMobile}
+                    padding={ui.heroPadding}
+                  />
 
-                  <SectionBlock title="Account" colors={colors}>
+                  <SectionBlock title="Account" colors={colors} marginTop={ui.sectionTop}>
                     <RowItem
                       icon="person-outline"
                       label="Profile"
                       value="Edit your personal information"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={() => router.push('/student/profile')}
                     />
                     <RowItem
@@ -459,17 +489,19 @@ function StudentSettingsContent() {
                       label="Notifications"
                       value="Manage alerts and reminders"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={() => router.push('/student/notifications')}
                     />
                     <RowItem
                       icon="key-outline"
                       label="Change password"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={onChangePassword}
                     />
                   </SectionBlock>
 
-                  <SectionBlock title="Notifications" colors={colors}>
+                  <SectionBlock title="Notifications" colors={colors} marginTop={ui.sectionTop}>
                     <ToggleItem
                       icon="mail-outline"
                       label="Email notifications"
@@ -477,6 +509,8 @@ function StudentSettingsContent() {
                       value={emailNotifs}
                       onValueChange={setEmailNotifs}
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
+                      descriptionLines={ui.toggleDescriptionLines}
                     />
                     <ToggleItem
                       icon="notifications-outline"
@@ -485,6 +519,8 @@ function StudentSettingsContent() {
                       value={pushNotifs}
                       onValueChange={setPushNotifs}
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
+                      descriptionLines={ui.toggleDescriptionLines}
                     />
                     <ToggleItem
                       icon="alarm-outline"
@@ -493,6 +529,8 @@ function StudentSettingsContent() {
                       value={deadlineReminders}
                       onValueChange={setDeadlineReminders}
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
+                      descriptionLines={ui.toggleDescriptionLines}
                     />
                     <ToggleItem
                       icon="megaphone-outline"
@@ -501,10 +539,12 @@ function StudentSettingsContent() {
                       value={marketingNotifs}
                       onValueChange={setMarketingNotifs}
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
+                      descriptionLines={ui.toggleDescriptionLines}
                     />
                   </SectionBlock>
 
-                  <SectionBlock title="Preferences" colors={colors}>
+                  <SectionBlock title="Preferences" colors={colors} marginTop={ui.sectionTop}>
                     <ToggleItem
                       icon="grid-outline"
                       label="Compact layout"
@@ -512,40 +552,46 @@ function StudentSettingsContent() {
                       value={compactMode}
                       onValueChange={setCompactMode}
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
+                      descriptionLines={ui.toggleDescriptionLines}
                     />
                   </SectionBlock>
 
-                  <SectionBlock title="Privacy & Legal" colors={colors}>
+                  <SectionBlock title="Privacy & Legal" colors={colors} marginTop={ui.sectionTop}>
                     <RowItem
                       icon="document-text-outline"
                       label="Terms & Conditions"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={() => openLegal('terms')}
                     />
                     <RowItem
                       icon="shield-checkmark-outline"
                       label="Privacy Policy"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={() => openLegal('privacy')}
                     />
                   </SectionBlock>
 
-                  <SectionBlock title="Support" colors={colors}>
+                  <SectionBlock title="Support" colors={colors} marginTop={ui.sectionTop}>
                     <RowItem
                       icon="help-circle-outline"
                       label="Contact support"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={contactSupport}
                     />
                     <RowItem
                       icon="chatbubble-ellipses-outline"
                       label="FAQ"
                       colors={colors}
+                      minHeight={ui.rowMinHeight}
                       onPress={openFaq}
                     />
                   </SectionBlock>
 
-                  <SectionBlock title="Danger zone" colors={colors}>
+                  <SectionBlock title="Danger zone" colors={colors} marginTop={ui.sectionTop}>
                     <Pressable
                       onPress={logout}
                       accessibilityRole="button"
@@ -596,17 +642,19 @@ function HeroPanel({
   colors,
   elevation,
   isMobile,
+  padding,
 }: {
   colors: ThemeColors;
   elevation: ViewStyle;
   isMobile: boolean;
+  padding: number;
 }) {
   return (
     <SurfaceCard
       colors={colors}
       elevation={elevation}
       style={{
-        padding: isMobile ? spacing(4) : spacing(5),
+        padding,
         backgroundColor: colors.cardAlt,
       }}
     >
@@ -677,13 +725,15 @@ function SectionBlock({
   title,
   children,
   colors,
+  marginTop,
 }: {
   title: string;
   children: React.ReactNode;
   colors: ThemeColors;
+  marginTop: number;
 }) {
   return (
-    <View style={{ marginTop: spacing(5) }}>
+    <View style={{ marginTop }}>
       <Text style={[styles.sectionTitle, typography.caption, { color: colors.textSoft }]}>{title.toUpperCase()}</Text>
       <View
         style={[
@@ -742,6 +792,7 @@ function NavItem({
   colors,
   danger,
   dangerOutline,
+  minHeight,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -750,6 +801,7 @@ function NavItem({
   colors: ThemeColors;
   danger?: boolean;
   dangerOutline?: boolean;
+  minHeight: number;
 }) {
   const iconBg = danger
     ? colors.dangerSoft
@@ -771,6 +823,7 @@ function NavItem({
         return [
           styles.navItem,
           {
+            minHeight,
             backgroundColor: active ? colors.cardAlt : colors.surface,
             borderColor: danger || dangerOutline ? colors.danger : active ? colors.borderStrong : colors.border,
           },
@@ -810,12 +863,14 @@ function RowItem({
   value,
   onPress,
   colors,
+  minHeight,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value?: string;
   onPress: () => void;
   colors: ThemeColors;
+  minHeight: number;
 }) {
   return (
     <Pressable
@@ -825,6 +880,7 @@ function RowItem({
       style={({ pressed }) => [
         styles.rowItem,
         {
+          minHeight,
           borderBottomColor: colors.border,
           backgroundColor: colors.card,
         },
@@ -875,6 +931,8 @@ function ToggleItem({
   value,
   onValueChange,
   colors,
+  minHeight,
+  descriptionLines,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -882,12 +940,15 @@ function ToggleItem({
   value: boolean;
   onValueChange: (value: boolean) => void;
   colors: ThemeColors;
+  minHeight: number;
+  descriptionLines: number;
 }) {
   return (
     <View
       style={[
         styles.rowItem,
         {
+          minHeight,
           borderBottomColor: colors.border,
           backgroundColor: colors.card,
         },
@@ -917,7 +978,7 @@ function ToggleItem({
               marginTop: spacing(1),
             },
           ]}
-          numberOfLines={3}
+          numberOfLines={descriptionLines}
         >
           {description}
         </Text>
@@ -1029,7 +1090,6 @@ const styles = StyleSheet.create({
   },
 
   navItem: {
-    minHeight: 52,
     borderRadius: radii.lg,
     borderWidth: 1,
     paddingHorizontal: spacing(3),
@@ -1056,7 +1116,6 @@ const styles = StyleSheet.create({
   },
 
   rowItem: {
-    minHeight: 68,
     paddingHorizontal: spacing(4),
     paddingVertical: spacing(3),
     borderBottomWidth: 1,
