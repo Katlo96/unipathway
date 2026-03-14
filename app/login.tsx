@@ -64,13 +64,6 @@ export default function Login() {
     xl: spacing(5),
   };
 
-  const elevations = Platform.select({
-    ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8 },
-    android: { elevation: 6 },
-    web: { boxShadow: '0 6px 16px rgba(0,0,0,0.1)' },
-    default: {},
-  });
-
   const breakpoints = { mobileMax: 479, tabletMax: 1023 };
   const maxContentWidth = 1240;
   const formMaxWidth = 480;
@@ -124,14 +117,17 @@ export default function Login() {
 
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 800));
-
     setIsSubmitting(false);
 
-    // Special case: Student → dedicated dashboard
+    // ────────────────────────────────────────────────
+    // Changed: Parent now goes to dedicated parent dashboard
+    // ────────────────────────────────────────────────
     if (selectedRole === 'Student') {
       router.push('/student/dashboard');
+    } else if (selectedRole === 'Parent') {
+      router.push('/parent/dashboard');
     } else {
-      // Other roles → generic pattern
+      // fallback for other roles
       const slug = selectedRole?.toLowerCase().replace(' ', '-') ?? 'student';
       router.push(`/${slug}/dashboard`);
     }
@@ -171,11 +167,9 @@ export default function Login() {
                     <Image source={LOGO} style={styles.logo} resizeMode="contain" />
                     <Text style={[typography.title, { color: colors.textPrimary }]}>UniPathway</Text>
                   </View>
-
                   <Text style={[typography.subtitle, { color: colors.textSecondary, marginBottom: spacing(4) }]}>
                     Empowering education journeys with tailored guidance and insights.
                   </Text>
-
                   <View style={styles.featureList}>
                     {[
                       { icon: 'sparkles', text: 'Intelligent course matching' },
@@ -204,7 +198,6 @@ export default function Login() {
                 >
                   Sign In
                 </Text>
-
                 <Text
                   style={[
                     typography.subtitle,
