@@ -12,6 +12,9 @@ import {
   type PressableStateCallbackType,
   Alert,
   useColorScheme,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +27,6 @@ import {
 // ── Design System ──────────────────────────────────────────────────────────────
 const BASE_SPACING = 4;
 const spacing = (n: number) => n * BASE_SPACING;
-
 const typography = {
   hero: { fontSize: 32, lineHeight: 38, fontWeight: '900' as const },
   title: { fontSize: 24, lineHeight: 30, fontWeight: '800' as const },
@@ -33,7 +35,6 @@ const typography = {
   label: { fontSize: 13, lineHeight: 18, fontWeight: '700' as const },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: '500' as const },
 };
-
 const radii = {
   sm: spacing(1),
   md: spacing(2),
@@ -41,7 +42,6 @@ const radii = {
   xl: spacing(4),
   pill: 9999,
 };
-
 const elevations = Platform.select({
   ios: {
     shadowColor: '#000',
@@ -53,14 +53,12 @@ const elevations = Platform.select({
   web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' } as any,
   default: {},
 });
-
 const breakpoints = { mobileMax: 479, tabletMin: 480, tabletMax: 1023, desktopMin: 1024 };
 const maxContentWidth = 1100;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 type AppStatus = 'Accepted' | 'Rejected' | 'Submitted' | 'Under review' | 'Draft';
-
 interface ApplicationItem {
   id: string;
   university: string;
@@ -68,7 +66,6 @@ interface ApplicationItem {
   date: string;
   status: AppStatus;
 }
-
 const DATA: ApplicationItem[] = [
   {
     id: '1',
@@ -112,13 +109,11 @@ function getPressableState(state: PressableStateCallbackType) {
   const hovered = (state as any).hovered === true;
   return { pressed: state.pressed, hovered };
 }
-
 function getPressableStyle({
   pressed,
 }: PressableStateCallbackType & { hovered?: boolean }) {
   return [pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] }] as const;
 }
-
 const statusColors = (scheme: 'light' | 'dark') => ({
   Accepted: {
     bg: scheme === 'light' ? '#E8F5E9' : '#1B5E20',
@@ -204,6 +199,7 @@ function ApplicationsContent() {
   }, []);
 
   const fadeAnim = useMemo(() => new Animated.Value(0), []);
+
   React.useEffect(() => {
     if (selected) {
       fadeAnim.setValue(0);
@@ -229,8 +225,28 @@ function ApplicationsContent() {
     });
   };
 
+  // ── New Application Modal State ───────────────────────────────────────────────
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newUniversity, setNewUniversity] = useState('');
+  const [newProgram, setNewProgram] = useState('');
+  const [newDate, setNewDate] = useState('');
+
   const handleNewApplication = () => {
-    Alert.alert('New Application', 'Start a new application process.');
+    setModalVisible(true);
+  };
+
+  const handleSaveApplication = () => {
+    // Placeholder: in real app → add to state / send to backend
+    Alert.alert('Application Started', 'Your new application has been created (placeholder)');
+    setModalVisible(false);
+    // Reset fields
+    setNewUniversity('');
+    setNewProgram('');
+    setNewDate('');
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
   };
 
   const EmptyState = () => (
@@ -278,7 +294,6 @@ function ApplicationsContent() {
   const ApplicationCard = ({ item }: { item: ApplicationItem }) => {
     const isSelected = item.id === selectedId;
     const { bg, text, accent } = colors.status[item.status];
-
     return (
       <Pressable
         onPress={() => (isDesktop ? handleSelect(item.id) : handleViewDetails(item))}
@@ -300,21 +315,18 @@ function ApplicationsContent() {
             <Text style={[typography.caption, { color: text }]}>{item.status}</Text>
           </View>
         </View>
-
         <Text
           style={[typography.body, { color: colors.textSecondary, marginTop: spacing(1) }]}
           numberOfLines={2}
         >
           {item.program}
         </Text>
-
         <View style={[styles.cardFooter, { marginTop: spacing(2) }]}>
           <Ionicons name="calendar-outline" size={spacing(4)} color={colors.textMuted} />
           <Text style={[typography.caption, { color: colors.textMuted, marginLeft: spacing(1) }]}>
             {item.date}
           </Text>
         </View>
-
         {!isDesktop && (
           <Pressable
             onPress={() => handleViewDetails(item)}
@@ -334,7 +346,6 @@ function ApplicationsContent() {
 
   const DetailsSidebar = () => {
     if (!selected) return null;
-
     return (
       <Animated.View
         style={[
@@ -347,20 +358,17 @@ function ApplicationsContent() {
         ]}
       >
         <Text style={[typography.title, { color: colors.textPrimary }]}>Application Details</Text>
-
         <View style={{ marginTop: spacing(4) }}>
           <Text style={[typography.subtitle, { color: colors.textPrimary }]}>{selected.university}</Text>
           <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing(1) }]}>
             {selected.program}
           </Text>
-
           <View style={[styles.cardFooter, { marginTop: spacing(2) }]}>
             <Ionicons name="calendar-outline" size={spacing(4)} color={colors.textMuted} />
             <Text style={[typography.caption, { color: colors.textMuted, marginLeft: spacing(1) }]}>
               {selected.date}
             </Text>
           </View>
-
           <View
             style={[
               styles.statusBadgeLarge,
@@ -375,7 +383,6 @@ function ApplicationsContent() {
             </Text>
           </View>
         </View>
-
         <Pressable
           onPress={() => handleViewDetails(selected)}
           style={({ pressed }) => [
@@ -386,7 +393,6 @@ function ApplicationsContent() {
         >
           <Text style={[typography.label, { color: '#FFFFFF' }]}>View Full Details</Text>
         </Pressable>
-
         <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing(4) }]}>
           Keep your documents updated for better chances.
         </Text>
@@ -427,7 +433,6 @@ function ApplicationsContent() {
                 >
                   <Ionicons name="menu-outline" size={spacing(6)} color={colors.textPrimary} />
                 </Pressable>
-
                 <Pressable
                   onPress={() => router.back()}
                   style={({ pressed }) => {
@@ -447,7 +452,6 @@ function ApplicationsContent() {
                 >
                   <Ionicons name="arrow-back" size={spacing(6)} color={colors.textPrimary} />
                 </Pressable>
-
                 <View style={styles.headerText}>
                   <Text style={[typography.hero, { color: colors.textPrimary }]}>Applications</Text>
                   <Text style={[typography.subtitle, { color: colors.textSecondary }]}>
@@ -455,7 +459,6 @@ function ApplicationsContent() {
                   </Text>
                 </View>
               </View>
-
               <Pressable
                 onPress={handleNewApplication}
                 style={({ pressed }) => [
@@ -497,12 +500,79 @@ function ApplicationsContent() {
                   </View>
                 )}
               </View>
-
               {isDesktop ? <DetailsSidebar /> : null}
             </View>
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* New Application Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeModal}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <Pressable style={modalStyles.overlay} onPress={closeModal}>
+            <Pressable style={modalStyles.container} onPress={(e) => e.stopPropagation()}>
+              <View style={modalStyles.header}>
+                <Text style={modalStyles.title}>New Application</Text>
+                <Pressable onPress={closeModal}>
+                  <Ionicons name="close" size={24} color={colors.textPrimary} />
+                </Pressable>
+              </View>
+
+              <View style={modalStyles.form}>
+                <View style={modalStyles.inputGroup}>
+                  <Text style={modalStyles.label}>University / Institution</Text>
+                  <TextInput
+                    style={modalStyles.input}
+                    value={newUniversity}
+                    onChangeText={setNewUniversity}
+                    placeholder="e.g. University of Botswana"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+
+                <View style={modalStyles.inputGroup}>
+                  <Text style={modalStyles.label}>Program / Course</Text>
+                  <TextInput
+                    style={modalStyles.input}
+                    value={newProgram}
+                    onChangeText={setNewProgram}
+                    placeholder="e.g. BSc Computer Science"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+
+                <View style={modalStyles.inputGroup}>
+                  <Text style={modalStyles.label}>Application Date</Text>
+                  <TextInput
+                    style={modalStyles.input}
+                    value={newDate}
+                    onChangeText={setNewDate}
+                    placeholder="e.g. 15/05/2026"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+              </View>
+
+              <View style={modalStyles.footer}>
+                <Pressable style={[modalStyles.button, modalStyles.cancelButton]} onPress={closeModal}>
+                  <Text style={modalStyles.buttonTextCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[modalStyles.button, modalStyles.saveButton]} onPress={handleSaveApplication}>
+                  <Text style={modalStyles.buttonTextSave}>Start Application</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -512,7 +582,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: { flex: 1 },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -541,7 +610,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: spacing(2),
   },
-
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -549,7 +617,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(2),
     borderRadius: radii.lg,
   },
-
   chipsContainer: {
     flexDirection: 'row',
     marginBottom: spacing(4),
@@ -561,9 +628,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: spacing(2),
   },
-
   mainLayout: {},
-
   card: {
     padding: spacing(4),
     borderRadius: radii.xl,
@@ -598,7 +663,6 @@ const styles = StyleSheet.create({
     padding: spacing(2),
     borderRadius: radii.md,
   },
-
   sidebar: {
     width: 320,
     maxWidth: 320,
@@ -606,7 +670,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     borderWidth: 1,
   },
-
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -620,8 +683,93 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-
   hoverLift: {
     transform: [{ translateY: -1 }],
+  },
+});
+
+// Modal Styles
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    width: '90%',
+    maxWidth: 460,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: { boxShadow: '0 10px 30px rgba(0,0,0,0.25)' },
+      default: { elevation: 12 },
+    }),
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#212121',
+  },
+  form: {
+    padding: 20,
+    gap: 16,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#757575',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: '#212121',
+    backgroundColor: '#FAFCFE',
+  },
+  footer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  button: {
+    flex: 1,
+    height: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F5',
+  },
+  saveButton: {
+    backgroundColor: '#2196F3',
+  },
+  buttonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212121',
+  },
+  buttonTextSave: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
