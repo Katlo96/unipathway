@@ -164,6 +164,7 @@ function getShadow(theme: Theme, level: 'sm' | 'md' | 'lg'): ViewStyle {
       md: `0px 16px 32px ${theme.shadow}`,
       lg: `0px 24px 56px ${theme.shadow}`,
     };
+
     return {
       boxShadow: shadowMap[level] as any,
     };
@@ -179,6 +180,27 @@ function getShadow(theme: Theme, level: 'sm' | 'md' | 'lg'): ViewStyle {
     shadowOffset: { width: 0, height: level === 'sm' ? 4 : level === 'md' ? 8 : 12 },
     elevation: elevationMap[level],
   };
+}
+
+function getContentMaxWidth(breakpoint: Breakpoint) {
+  if (breakpoint === 'desktop') return 1240;
+  if (breakpoint === 'tablet') return 1100;
+  return undefined;
+}
+
+function getResponsiveColumns(breakpoint: Breakpoint, desktop: number, tablet: number, mobile: number) {
+  if (breakpoint === 'desktop') return desktop;
+  if (breakpoint === 'tablet') return tablet;
+  return mobile;
+}
+
+function getGridItemWidth(columns: number, gap: number) {
+  if (columns <= 1) return '100%';
+  return `calc(${100 / columns}% - ${(gap * (columns - 1)) / columns}px)` as any;
+}
+
+function isMobileRowBreakpoint(breakpoint: Breakpoint) {
+  return breakpoint === 'mobile';
 }
 
 type ScalePressableProps = {
@@ -276,7 +298,7 @@ export default function ParentDashboardScreen() {
   const isTablet = breakpoint === 'tablet';
   const isDesktop = breakpoint === 'desktop';
 
-  const contentMaxWidth = isDesktop ? 1240 : isTablet ? 1100 : width;
+  const contentMaxWidth = getContentMaxWidth(breakpoint);
   const pageHorizontalPadding = isDesktop ? spacing(8) : isTablet ? spacing(6) : spacing(4);
   const sectionGap = isDesktop ? spacing(8) : spacing(6);
 
@@ -294,7 +316,7 @@ export default function ParentDashboardScreen() {
     router.push(href);
   }, []);
 
-   const topStats = useMemo<
+  const topStats = useMemo<
     Array<{
       label: string;
       value: string;
@@ -339,9 +361,11 @@ export default function ParentDashboardScreen() {
           <View
             style={[
               styles.pageInner,
-              {
-                maxWidth: contentMaxWidth,
-              },
+              contentMaxWidth
+                ? {
+                    maxWidth: contentMaxWidth,
+                  }
+                : null,
             ]}
           >
             <ScrollView
@@ -350,6 +374,7 @@ export default function ParentDashboardScreen() {
                 paddingTop: spacing(4),
                 paddingBottom: spacing(8),
               }}
+              keyboardShouldPersistTaps="handled"
             >
               <HeroSection
                 theme={theme}
@@ -379,6 +404,7 @@ export default function ParentDashboardScreen() {
                       <View style={styles.desktopTopGridLeft}>
                         <ProgressPanel theme={theme} breakpoint={breakpoint} navigate={navigate} />
                       </View>
+
                       <View style={styles.desktopTopGridRight}>
                         <ApplicationsPanel theme={theme} breakpoint={breakpoint} navigate={navigate} />
                       </View>
@@ -421,14 +447,16 @@ export default function ParentDashboardScreen() {
           </View>
         </View>
       </SafeAreaView>
-
-      <Modal
+            <Modal
         visible={showChildSelector}
         transparent
         animationType="fade"
         onRequestClose={() => setShowChildSelector(false)}
       >
-        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]} onPress={() => setShowChildSelector(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]}
+          onPress={() => setShowChildSelector(false)}
+        >
           <Pressable onPress={() => {}} style={{ width: '100%', alignItems: 'center' }}>
             <View
               style={[
@@ -455,7 +483,16 @@ export default function ParentDashboardScreen() {
                 </ScalePressable>
               </View>
 
-              <Text style={[typography.caption, { color: theme.textMuted, marginTop: spacing(1), marginBottom: spacing(4) }]}>
+              <Text
+                style={[
+                  typography.caption,
+                  {
+                    color: theme.textMuted,
+                    marginTop: spacing(1),
+                    marginBottom: spacing(4),
+                  },
+                ]}
+              >
                 Choose the child whose academic information you want to review.
               </Text>
 
@@ -487,7 +524,7 @@ export default function ParentDashboardScreen() {
                         },
                       ]}
                     >
-                      <Ionicons name="person-outline" size={20} color={isActive ? theme.primary : theme.primary} />
+                      <Ionicons name="person-outline" size={20} color={theme.primary} />
                     </View>
 
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -514,7 +551,13 @@ export default function ParentDashboardScreen() {
 
       <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
         <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]} onPress={() => setShowMenu(false)}>
-          <Pressable onPress={() => {}} style={{ width: '100%', alignItems: isDesktop ? 'flex-end' : 'center' }}>
+          <Pressable
+            onPress={() => {}}
+            style={{
+              width: '100%',
+              alignItems: isDesktop ? 'flex-end' : 'center',
+            }}
+          >
             <View
               style={[
                 styles.menuCard,
@@ -610,7 +653,9 @@ function HeroSection({
   }>;
 }) {
   const isDesktop = breakpoint === 'desktop';
-  const isTablet = breakpoint === 'tablet';
+  const heroStatsColumns = getResponsiveColumns(breakpoint, 1, 2, 1);
+  const heroGap = spacing(3);
+  const heroStatWidth = getGridItemWidth(heroStatsColumns, heroGap);
 
   return (
     <View
@@ -627,7 +672,7 @@ function HeroSection({
       <View style={styles.heroGlowTwo} />
 
       <View style={[styles.heroTopRow, !isDesktop && styles.heroTopRowStack]}>
-        <View style={[styles.heroMainCopy, isDesktop && { paddingRight: spacing(6) }]}>
+        <View style={[styles.heroMainCopy, isDesktop ? { paddingRight: spacing(6) } : null]}>
           <Text style={[typography.hero, { color: '#FFFFFF' }]}>Parent Dashboard</Text>
           <Text
             style={[
@@ -726,12 +771,13 @@ function HeroSection({
               styles.heroStatsGrid,
               {
                 marginTop: spacing(4),
-                flexDirection: isTablet ? 'row' : 'column',
-                flexWrap: isTablet ? 'wrap' : 'nowrap',
+                flexDirection: heroStatsColumns === 1 ? 'column' : 'row',
+                flexWrap: heroStatsColumns === 1 ? 'nowrap' : 'wrap',
+                gap: heroGap,
               },
             ]}
           >
-            {stats.map((stat, index) => (
+            {stats.map((stat) => (
               <View
                 key={stat.label}
                 style={[
@@ -739,8 +785,7 @@ function HeroSection({
                   {
                     backgroundColor: 'rgba(255,255,255,0.12)',
                     borderColor: 'rgba(255,255,255,0.16)',
-                    width: isTablet ? '48.8%' : '100%',
-                    marginBottom: !isTablet && index < stats.length - 1 ? spacing(3) : 0,
+                    width: heroStatWidth,
                   },
                 ]}
               >
@@ -879,7 +924,6 @@ function ChildSummaryCard({
     </ScalePressable>
   );
 }
-
 function QuickActions({
   theme,
   breakpoint,
@@ -889,32 +933,33 @@ function QuickActions({
   breakpoint: Breakpoint;
   navigate: (href: Href) => void;
 }) {
-  const isDesktop = breakpoint === 'desktop';
-  const isTablet = breakpoint === 'tablet';
+  const actions = useMemo(
+    () => [
+      {
+        label: 'Child Overview',
+        sub: 'Profile & Results',
+        icon: 'person-outline' as const,
+        href: '/parent/child-overview' as any,
+      },
+      {
+        label: 'Progress',
+        sub: 'Trends & Insights',
+        icon: 'trending-up-outline' as const,
+        href: '/parent/progress' as any,
+      },
+      {
+        label: 'Applications',
+        sub: 'Status & Deadlines',
+        icon: 'document-text-outline' as const,
+        href: '/parent/applications' as any,
+      },
+    ],
+    []
+  );
 
-  const actions = [
-    {
-      label: 'Child Overview',
-      sub: 'Profile & Results',
-      icon: 'person-outline' as const,
-      href: '/parent/child-overview' as any,
-    },
-    {
-      label: 'Progress',
-      sub: 'Trends & Insights',
-      icon: 'trending-up-outline' as const,
-      href: '/parent/progress' as any,
-    },
-    {
-      label: 'Applications',
-      sub: 'Status & Deadlines',
-      icon: 'document-text-outline' as const,
-      href: '/parent/applications' as any,
-    },
-  ];
-
-  const columns = isDesktop ? 1 : isTablet ? 2 : 1;
-  const itemWidth = columns === 1 ? '100%' : '48.8%';
+  const columns = getResponsiveColumns(breakpoint, 1, 2, 1);
+  const gap = spacing(3);
+  const itemWidth = getGridItemWidth(columns, gap);
 
   return (
     <View
@@ -943,10 +988,11 @@ function QuickActions({
             marginTop: spacing(4),
             flexDirection: columns === 1 ? 'column' : 'row',
             flexWrap: columns === 1 ? 'nowrap' : 'wrap',
+            gap,
           },
         ]}
       >
-        {actions.map((action, index) => (
+        {actions.map((action) => (
           <ScalePressable
             key={action.label}
             onPress={() => navigate(action.href)}
@@ -957,8 +1003,6 @@ function QuickActions({
                 width: itemWidth,
                 backgroundColor: theme.surfaceAlt,
                 borderColor: theme.border,
-                marginBottom:
-                  columns === 1 ? (index < actions.length - 1 ? spacing(3) : 0) : index < actions.length - 1 ? spacing(3) : 0,
                 opacity: pressed ? 0.98 : 1,
               },
             ]}
@@ -993,7 +1037,7 @@ function ProgressPanel({
   breakpoint: Breakpoint;
   navigate: (href: Href) => void;
 }) {
-  const bars = [18, 24, 20, 32, 28, 40, 36];
+  const bars = useMemo(() => [18, 24, 20, 32, 28, 40, 36], []);
   const isDesktop = breakpoint === 'desktop';
 
   return (
@@ -1075,8 +1119,11 @@ function ApplicationsPanel({
   breakpoint: Breakpoint;
   navigate: (href: Href) => void;
 }) {
-  const stats = { submitted: 2, drafts: 1 };
-  const deadlines = ['Scholarship — 3 days left', 'University Application — 10 days left'];
+  const stats = useMemo(() => ({ submitted: 2, drafts: 1 }), []);
+  const deadlines = useMemo(
+    () => ['Scholarship — 3 days left', 'University Application — 10 days left'],
+    []
+  );
   const isMobile = breakpoint === 'mobile';
 
   return (
@@ -1139,10 +1186,12 @@ function ApplicationsPanel({
               key={deadline}
               style={[
                 styles.deadlineItem,
-                index < deadlines.length - 1 && {
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.border,
-                },
+                index < deadlines.length - 1
+                  ? {
+                      borderBottomWidth: 1,
+                      borderBottomColor: theme.border,
+                    }
+                  : null,
               ]}
             >
               <View style={[styles.deadlineIconWrap, { backgroundColor: theme.warningSoft }]}>
@@ -1335,10 +1384,6 @@ function MenuItem({
       <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
     </ScalePressable>
   );
-}
-
-function isMobileRowBreakpoint(breakpoint: Breakpoint) {
-  return breakpoint === 'mobile';
 }
 
 // ────────────────────────────────────────────────
