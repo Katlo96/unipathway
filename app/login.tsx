@@ -126,6 +126,9 @@ export default function Login() {
       router.push('/student/dashboard');
     } else if (selectedRole === 'Parent') {
       router.push('/parent/dashboard');
+    }
+    else if (selectedRole === 'Teacher') {
+      router.push('/teacher/dashboard');
     } else {
       // fallback for other roles
       const slug = selectedRole?.toLowerCase().replace(' ', '-') ?? 'student';
