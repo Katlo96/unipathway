@@ -68,8 +68,7 @@ export default function Login() {
   const maxContentWidth = 1240;
   const formMaxWidth = 480;
 
-  const roles = ['Student', 'Parent', 'Teacher', 'School Admin', 'University Rep', 'System Admin'] as const;
-  type RoleType = typeof roles[number];
+  
 
   const uiMode = useMemo<'mobile' | 'tablet' | 'desktop'>(() => {
     if (width <= breakpoints.mobileMax) return 'mobile';
@@ -83,8 +82,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
-  const [showRoleModal, setShowRoleModal] = useState(false);
+
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -99,7 +98,7 @@ export default function Login() {
   }, []);
 
   const validateForm = () => {
-    if (!selectedRole) return 'Please select a role.';
+  
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) return 'Valid email is required.';
     if (!password.trim() || password.length < 8) return 'Password must be at least 8 characters.';
     return null;
@@ -122,24 +121,10 @@ export default function Login() {
     // ────────────────────────────────────────────────
     // Changed: Parent now goes to dedicated parent dashboard
     // ────────────────────────────────────────────────
-    if (selectedRole === 'Student') {
-      router.push('/student/dashboard');
-    } else if (selectedRole === 'Parent') {
-      router.push('/parent/dashboard');
-    }
-    else if (selectedRole === 'Teacher') {
-      router.push('/teacher/dashboard');
-    } else {
-      // fallback for other roles
-      const slug = selectedRole?.toLowerCase().replace(' ', '-') ?? 'student';
-      router.push(`/${slug}/dashboard`);
-    }
+   router.push('/student/dashboard');
   };
 
-  const handleRoleSelect = (role: RoleType) => {
-    setSelectedRole(role);
-    setShowRoleModal(false);
-  };
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -210,21 +195,7 @@ export default function Login() {
                   Access your personalized dashboard.
                 </Text>
 
-                <Pressable
-                  onPress={() => setShowRoleModal(true)}
-                  style={({ pressed }) => [
-                    styles.inputContainer,
-                    { borderColor: colors.border, backgroundColor: colors.surfaceAlt },
-                    pressed && { transform: [{ scale: 0.98 }], borderColor: colors.primary },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Select role"
-                >
-                  <Text style={[typography.body, { color: selectedRole ? colors.textPrimary : colors.textMuted }]}>
-                    {selectedRole || 'Select Role'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
-                </Pressable>
+              
 
                 <View
                   style={[
@@ -343,37 +314,7 @@ export default function Login() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      <Modal
-        visible={showRoleModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowRoleModal(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowRoleModal(false)}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[typography.title, { color: colors.textPrimary, marginBottom: spacing(4) }]}>
-              Choose Role
-            </Text>
-
-            {roles.map((role) => (
-              <Pressable
-                key={role}
-                onPress={() => handleRoleSelect(role)}
-                style={({ pressed }) => [
-                  styles.roleOption,
-                  { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                  pressed && { transform: [{ scale: 0.98 }], backgroundColor: colors.accent },
-                ]}
-                accessibilityRole="menuitem"
-                accessibilityLabel={`Select ${role}`}
-              >
-                <Text style={[typography.body, { color: colors.textPrimary }]}>{role}</Text>
-                {selectedRole === role && <Ionicons name="checkmark" size={20} color={colors.success} />}
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+     
     </View>
   );
 }

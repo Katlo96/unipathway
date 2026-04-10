@@ -60,8 +60,7 @@ const breakpoints = { mobileMax: 479, tabletMax: 1023 };
 const maxAppWidth = 1240;
 const formMaxWidth = 480;
 
-const roles = ['Student', 'Parent', 'Teacher', 'School Admin', 'University Rep', 'System Admin'] as const;
-type RoleType = typeof roles[number];
+
 
 export default function Signup() {
   const { width, height } = useWindowDimensions(); // Include height for adaptive sizing
@@ -104,8 +103,6 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
-  const [showRoleModal, setShowRoleModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,7 +122,6 @@ export default function Signup() {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email.trim())) return 'Valid email is required.';
     if (!password.trim() || password.length < 8) return 'Password must be at least 8 characters.';
     if (password !== confirmPassword) return 'Passwords do not match.';
-    if (!selectedRole) return 'Please select a role.';
     return null;
   };
 
@@ -145,10 +141,7 @@ export default function Signup() {
     router.replace('/login');
   };
 
-  const handleRoleSelect = (role: RoleType) => {
-    setSelectedRole(role);
-    setShowRoleModal(false);
-  };
+  
 
   // Responsive Layout Branching
   const renderDesktopSidebar = () => (
@@ -184,21 +177,7 @@ export default function Signup() {
       <Text style={[typographyScale.subtitle, { color: colors.textSecondary, marginBottom: spacing(6) }]}>
         Create your account in minutes.
       </Text>
-      <Pressable
-        onPress={() => setShowRoleModal(true)}
-        style={({ pressed }) => [
-          styles.inputWrap,
-          { borderColor: colors.border, backgroundColor: colors.surfaceAlt },
-          pressed && { transform: [{ scale: 0.96 }], borderColor: colors.primary },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Select role"
-      >
-        <Text style={[typographyScale.body, { color: selectedRole ? colors.textPrimary : colors.textMuted, flex: 1 }]}>
-          {selectedRole || 'Select Role'}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
-      </Pressable>
+    
       <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.surfaceAlt, marginTop: spacing(3) }]}>
         <Ionicons name="mail-outline" size={20} color={colors.textMuted} style={{ marginRight: spacing(2) }} />
         <TextInput
@@ -305,28 +284,7 @@ export default function Signup() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-      <Modal visible={showRoleModal} transparent animationType="fade" onRequestClose={() => setShowRoleModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowRoleModal(false)}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[typographyScale.title, { color: colors.textPrimary, marginBottom: spacing(4) }]}>Choose Role</Text>
-            {roles.map(role => (
-              <Pressable
-                key={role}
-                onPress={() => handleRoleSelect(role)}
-                style={({ pressed }) => [
-                  styles.roleItem,
-                  { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                  pressed && { transform: [{ scale: 0.96 }], backgroundColor: colors.accent },
-                ]}
-                accessibilityRole="menuitem"
-              >
-                <Text style={[typographyScale.body, { color: colors.textPrimary }]}>{role}</Text>
-                {selectedRole === role && <Ionicons name="checkmark" size={20} color={colors.success} />}
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+     
     </View>
   );
 }
