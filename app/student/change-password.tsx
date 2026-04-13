@@ -1,159 +1,457 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
   Pressable,
-  StyleSheet,
-  Platform,
-  ScrollView,
-  TextInput,
   useWindowDimensions,
-  useColorScheme,
+  Platform,
+  TextInput,
   Alert,
   type ViewStyle,
-  type PressableStateCallbackType,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
   StudentMenuProvider,
-  useStudentMenu,
 } from '../../components/student/StudentMenu';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DashboardLayout & design tokens
+// ─────────────────────────────────────────────────────────────────────────────
+import DashboardLayout, {
+  spacing,
+  typography,
+  radii,
+  useTheme,
+} from '../../components/student/DashboardLayout';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 
-type ThemeColors = {
-  appBg: string;
-  surface: string;
-  surfaceMuted: string;
-  card: string;
-  cardAlt: string;
-  primary: string;
-  primarySoft: string;
-  text: string;
-  textMuted: string;
-  textSoft: string;
-  border: string;
-  borderStrong: string;
-  success: string;
-  danger: string;
-  dangerSoft: string;
-  white: string;
-};
-
-const BASE_SPACING = 4;
-const spacing = (n: number) => n * BASE_SPACING;
-const MIN_TAP = 44;
-const MAX_DESKTOP_WIDTH = 1180;
-
-const radii = {
-  md: spacing(4),
-  lg: spacing(5),
-  xl: spacing(6),
-  pill: 999,
-};
-
-const typography = {
-  hero: { fontSize: 28, lineHeight: 34, fontWeight: '900' as const },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '800' as const },
-  section: { fontSize: 16, lineHeight: 22, fontWeight: '800' as const },
-  body: { fontSize: 14, lineHeight: 20, fontWeight: '600' as const },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: '700' as const },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '700' as const },
-};
-
-function getBreakpoint(width: number): Breakpoint {
-  if (width < 480) return 'mobile';
-  if (width <= 1024) return 'tablet';
-  return 'desktop';
+// ─────────────────────────────────────────────────────────────────────────────
+// Elevation helper
+// ─────────────────────────────────────────────────────────────────────────────
+function useElevation(intensity: 'sm' | 'md' | 'lg' = 'md'): ViewStyle {
+  return useMemo<ViewStyle>(() => {
+    const opacity = 0.28;
+    const radius = intensity === 'sm' ? 6 : intensity === 'md' ? 14 : 22;
+    const offsetY = intensity === 'sm' ? 2 : intensity === 'md' ? 5 : 10;
+    return (
+      Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: offsetY },
+          shadowOpacity: opacity,
+          shadowRadius: radius,
+        },
+        android: {
+          elevation: intensity === 'sm' ? 3 : intensity === 'md' ? 6 : 12,
+        },
+        web: {
+          boxShadow: `0 ${offsetY}px ${radius * 1.5}px rgba(0,0,0,${opacity})`,
+        },
+        default: {},
+      }) ?? {}
+    );
+  }, [intensity]);
 }
 
-function getPressableState(state: PressableStateCallbackType) {
-  const hovered = (state as any).hovered === true;
-  return { pressed: state.pressed, hovered };
+// ─────────────────────────────────────────────────────────────────────────────
+// Password strength calculator
+// ─────────────────────────────────────────────────────────────────────────────
+type StrengthLevel = 'none' | 'weak' | 'fair' | 'strong' | 'excellent';
+
+function getPasswordStrength(password: string): StrengthLevel {
+  if (!password) return 'none';
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score <= 1) return 'weak';
+  if (score === 2) return 'fair';
+  if (score === 3) return 'strong';
+  return 'excellent';
 }
 
-function getColors(scheme: 'light' | 'dark'): ThemeColors {
-  const light = scheme === 'light';
-
-  return {
-    appBg: light ? '#F4F8FB' : '#081018',
-    surface: light ? '#FFFFFF' : '#121C26',
-    surfaceMuted: light ? '#EEF4F7' : '#182430',
-    card: light ? '#FFFFFF' : '#16202B',
-    cardAlt: light ? '#F7FBFD' : '#1A2632',
-    primary: '#57AFC2',
-    primarySoft: light ? 'rgba(87,175,194,0.14)' : 'rgba(87,175,194,0.22)',
-    text: light ? '#0B0F12' : '#EAF2F8',
-    textMuted: light ? 'rgba(11,15,18,0.72)' : 'rgba(234,242,248,0.78)',
-    textSoft: light ? 'rgba(11,15,18,0.55)' : 'rgba(234,242,248,0.58)',
-    border: light ? 'rgba(11,15,18,0.08)' : 'rgba(234,242,248,0.12)',
-    borderStrong: light ? 'rgba(11,15,18,0.12)' : 'rgba(234,242,248,0.18)',
-    success: '#2F9E44',
-    danger: '#C0392B',
-    dangerSoft: light ? 'rgba(192,57,43,0.10)' : 'rgba(192,57,43,0.18)',
-    white: '#FFFFFF',
-  };
+function strengthMeta(level: StrengthLevel): { label: string; color: string; segments: number } {
+  switch (level) {
+    case 'weak':      return { label: 'Weak',      color: '#F87171', segments: 1 };
+    case 'fair':      return { label: 'Fair',       color: '#FBBF24', segments: 2 };
+    case 'strong':    return { label: 'Strong',     color: '#34D399', segments: 3 };
+    case 'excellent': return { label: 'Excellent',  color: '#60A5FA', segments: 4 };
+    default:          return { label: '',           color: 'transparent', segments: 0 };
+  }
 }
 
-function getElevation(scheme: 'light' | 'dark'): ViewStyle {
-  return Platform.select<ViewStyle>({
-    ios: {
-      shadowColor: '#000',
-      shadowOpacity: scheme === 'light' ? 0.08 : 0.18,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 10 },
-    },
-    android: {
-      elevation: scheme === 'light' ? 3 : 2,
-    },
-    web: {
-      boxShadow:
-        scheme === 'light'
-          ? '0 10px 28px rgba(0,0,0,0.08)'
-          : '0 10px 28px rgba(0,0,0,0.28)',
-    } as any,
-    default: {},
-  }) as ViewStyle;
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// PasswordStrengthBar
+// ─────────────────────────────────────────────────────────────────────────────
+function PasswordStrengthBar({ password }: { password: string }) {
+  const colors = useTheme();
+  const level = getPasswordStrength(password);
+  const meta = strengthMeta(level);
 
-export default function ChangePasswordScreen() {
+  if (level === 'none') return null;
+
   return (
-    <StudentMenuProvider>
-      <ChangePasswordContent />
-    </StudentMenuProvider>
+    <View style={{ marginTop: spacing(2), gap: spacing(2) }}>
+      <View style={{ flexDirection: 'row', gap: spacing(1) }}>
+        {[1, 2, 3, 4].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: i <= meta.segments ? meta.color : colors.border,
+            }}
+          />
+        ))}
+      </View>
+      <Text style={[typography.caption, { color: meta.color, fontWeight: '700' }]}>
+        {meta.label}
+      </Text>
+    </View>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// InputBlock — self-contained, uses useTheme()
+// ─────────────────────────────────────────────────────────────────────────────
+function InputBlock({
+  label,
+  value,
+  onChangeText,
+  secureTextEntry,
+  showToggle,
+  onToggle,
+  placeholder,
+  showStrength = false,
+  matchValue,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  secureTextEntry: boolean;
+  showToggle: boolean;
+  onToggle: () => void;
+  placeholder?: string;
+  showStrength?: boolean;
+  matchValue?: string;
+}) {
+  const colors = useTheme();
+  const elevation = useElevation('sm');
+
+  const matchState: 'idle' | 'match' | 'mismatch' =
+    matchValue === undefined
+      ? 'idle'
+      : !value
+      ? 'idle'
+      : value === matchValue
+      ? 'match'
+      : 'mismatch';
+
+  const borderColor =
+    matchState === 'match'
+      ? colors.success
+      : matchState === 'mismatch'
+      ? colors.danger
+      : colors.border;
+
+  return (
+    <View style={{ marginBottom: spacing(5) }}>
+      <Text
+        style={[
+          typography.label,
+          { color: colors.textPrimary, marginBottom: spacing(2) },
+        ]}
+      >
+        {label}
+      </Text>
+
+      <View
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            minHeight: 54,
+            borderWidth: 1,
+            borderRadius: radii.lg,
+            borderColor,
+            backgroundColor: colors.surfaceAlt,
+            paddingLeft: spacing(4),
+            paddingRight: spacing(2),
+          },
+          elevation,
+        ]}
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={secureTextEntry}
+          placeholder={placeholder ?? label}
+          placeholderTextColor={colors.textMuted}
+          style={{
+            flex: 1,
+            minHeight: 52,
+            fontSize: 15,
+            fontWeight: '500',
+            color: colors.textPrimary,
+          }}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        {/* Match indicator */}
+        {matchState !== 'idle' && (
+          <Ionicons
+            name={matchState === 'match' ? 'checkmark-circle' : 'close-circle'}
+            size={20}
+            color={matchState === 'match' ? colors.success : colors.danger}
+            style={{ marginRight: spacing(1) }}
+          />
+        )}
+
+        {/* Eye toggle */}
+        <Pressable
+          onPress={onToggle}
+          accessibilityRole="button"
+          accessibilityLabel={secureTextEntry ? 'Show password' : 'Hide password'}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: radii.md,
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Ionicons
+            name={showToggle ? 'eye-off-outline' : 'eye-outline'}
+            size={20}
+            color={colors.textSecondary}
+          />
+        </Pressable>
+      </View>
+
+      {/* Strength bar (new password field only) */}
+      {showStrength && <PasswordStrengthBar password={value} />}
+
+      {/* Match feedback text */}
+      {matchState === 'mismatch' && (
+        <Text
+          style={[
+            typography.caption,
+            { color: colors.danger, marginTop: spacing(2) },
+          ]}
+        >
+          Passwords do not match
+        </Text>
+      )}
+      {matchState === 'match' && (
+        <Text
+          style={[
+            typography.caption,
+            { color: colors.success, marginTop: spacing(2) },
+          ]}
+        >
+          Passwords match
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Security tip row
+// ─────────────────────────────────────────────────────────────────────────────
+function SecurityTip({
+  icon,
+  text,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+}) {
+  const colors = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: spacing(3),
+      }}
+    >
+      <Ionicons name={icon} size={16} color={colors.primary} style={{ marginTop: 2 }} />
+      <Text
+        style={[
+          typography.caption,
+          { color: colors.textSecondary, flex: 1, lineHeight: 18 },
+        ]}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sidebar panel (desktop)
+// ─────────────────────────────────────────────────────────────────────────────
+function SidebarPanel() {
+  const colors = useTheme();
+  const elevation = useElevation('md');
+
+  return (
+    <View style={{ width: 300, flexShrink: 0, gap: spacing(5) }}>
+      {/* Security tips card */}
+      <View
+        style={[
+          {
+            backgroundColor: colors.surface,
+            borderRadius: radii.xxl,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: 'hidden',
+          },
+          elevation,
+        ]}
+      >
+        <View style={{ height: 3, backgroundColor: colors.primary }} />
+        <View style={{ padding: spacing(6), gap: spacing(4) }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing(3) }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: radii.lg,
+                backgroundColor: `${colors.primary}22`,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+            </View>
+            <Text style={[typography.h2, { color: colors.textPrimary }]}>
+              Security Tips
+            </Text>
+          </View>
+
+          <View style={{ gap: spacing(4) }}>
+            <SecurityTip
+              icon="checkmark-circle-outline"
+              text="Use at least 8 characters for a stronger password."
+            />
+            <SecurityTip
+              icon="checkmark-circle-outline"
+              text="Mix uppercase letters, numbers, and special symbols."
+            />
+            <SecurityTip
+              icon="checkmark-circle-outline"
+              text="Avoid using personal information like your name or birthday."
+            />
+            <SecurityTip
+              icon="checkmark-circle-outline"
+              text="Never reuse passwords across different accounts."
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Password strength legend */}
+      <View
+        style={[
+          {
+            backgroundColor: colors.surface,
+            borderRadius: radii.xxl,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: spacing(6),
+            gap: spacing(4),
+          },
+          elevation,
+        ]}
+      >
+        <Text style={[typography.h2, { color: colors.textPrimary }]}>
+          Strength Guide
+        </Text>
+        {(
+          [
+            { level: 'Weak',      color: '#F87171', desc: '< 8 chars, no variety' },
+            { level: 'Fair',      color: '#FBBF24', desc: '8+ chars, some variety' },
+            { level: 'Strong',    color: '#34D399', desc: '8+ chars, letters + numbers' },
+            { level: 'Excellent', color: '#60A5FA', desc: '12+ chars, symbols included' },
+          ] as const
+        ).map(({ level, color, desc }) => (
+          <View
+            key={level}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing(3) }}
+          >
+            <View
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                backgroundColor: color,
+              }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.label, { color: colors.textPrimary }]}>
+                {level}
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                {desc}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Settings shortcut */}
+      <Pressable
+        onPress={() => router.push('/student/settings')}
+        style={({ pressed }) => ({
+          flexDirection: 'row' as const,
+          alignItems: 'center' as const,
+          gap: spacing(3),
+          padding: spacing(4),
+          backgroundColor: colors.surfaceAlt,
+          borderRadius: radii.xl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Ionicons name="settings-outline" size={18} color={colors.textSecondary} />
+        <Text style={[typography.label, { color: colors.textSecondary }]}>
+          Back to Settings
+        </Text>
+        <View style={{ flex: 1 }} />
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      </Pressable>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main screen content
+// ─────────────────────────────────────────────────────────────────────────────
 function ChangePasswordContent() {
-  const { width, height } = useWindowDimensions();
-  const rawScheme = useColorScheme();
-  const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
-  const colors = useMemo(() => getColors(scheme), [scheme]);
-  const elevation = useMemo(() => getElevation(scheme), [scheme]);
-  const bp = useMemo(() => getBreakpoint(width), [width]);
-  const { openMenu } = useStudentMenu();
+  const { width } = useWindowDimensions();
+  const colors = useTheme();
+  const elevation = useElevation('lg');
 
-  const ui = useMemo(() => {
-    const isMobile = bp === 'mobile';
-    const isTablet = bp === 'tablet';
-    const isDesktop = bp === 'desktop';
+  const breakpoint = useMemo<Breakpoint>(() => {
+    if (width < 768) return 'mobile';
+    if (width < 1024) return 'tablet';
+    return 'desktop';
+  }, [width]);
 
-    return {
-      isMobile,
-      isTablet,
-      isDesktop,
-      shellWidth: isDesktop ? Math.min(MAX_DESKTOP_WIDTH, width - spacing(8) * 2) : width,
-      shellHeight: isDesktop ? Math.min(920, Math.round(height * 0.9)) : height,
-      shellRadius: isDesktop ? radii.xl : 0,
-      shellPadding: isDesktop ? spacing(7) : 0,
-      padX: isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(4),
-      padY: isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(4),
-      gap: isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(4),
-      cardWidth: isDesktop ? 720 : '100%',
-    };
-  }, [bp, width, height]);
+  const isDesktop = breakpoint === 'desktop';
+  const isMobile = breakpoint === 'mobile';
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
@@ -162,375 +460,343 @@ function ChangePasswordContent() {
   const [showNext, setShowNext] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const onSave = () => {
+  const handleSave = useCallback(() => {
     if (!currentPassword.trim() || !nextPassword.trim() || !confirmPassword.trim()) {
       Alert.alert('Incomplete form', 'Please fill in all password fields.');
       return;
     }
-
     if (nextPassword.length < 8) {
-      Alert.alert('Weak password', 'Your new password must be at least 8 characters long.');
+      Alert.alert('Weak password', 'Your new password must be at least 8 characters.');
       return;
     }
-
     if (nextPassword !== confirmPassword) {
-      Alert.alert('Passwords do not match', 'Please make sure the new password fields match.');
+      Alert.alert('Passwords do not match', 'New password fields must match.');
       return;
     }
+    Alert.alert(
+      'Password Updated',
+      'Your password has been changed successfully. Backend integration pending.',
+    );
+  }, [currentPassword, nextPassword, confirmPassword]);
 
-    Alert.alert('Success', 'Password change UI completed. Backend connection will be added later.');
-  };
-
-  return (
-    <View style={[styles.page, { backgroundColor: colors.appBg }]}>
-      <View style={[styles.center, { padding: ui.shellPadding }]}>
+  // ── Hero banner ────────────────────────────────────────────────────────────
+  const HeroBanner = (
+    <View
+      style={[
+        {
+          backgroundColor: colors.surface,
+          borderRadius: radii.xxl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: 'hidden',
+          marginBottom: spacing(7),
+        },
+        elevation,
+      ]}
+    >
+      <View style={{ height: 3, backgroundColor: colors.primary }} />
+      <View style={{ padding: isMobile ? spacing(5) : spacing(7) }}>
         <View
-          style={[
-            styles.shell,
-            {
-              width: ui.shellWidth,
-              height: ui.shellHeight,
-              borderRadius: ui.shellRadius,
-              backgroundColor: colors.surfaceMuted,
-            },
-            ui.isDesktop
-              ? [
-                  styles.shellDesktop,
-                  {
-                    borderColor: colors.border,
-                  },
-                  elevation,
-                ]
-              : null,
-          ]}
+          style={{
+            flexDirection: 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: spacing(5),
+            flexWrap: 'wrap',
+          }}
         >
-          <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={{ flex: 1 }}>
+            {/* Badge */}
             <View
+              style={{
+                alignSelf: 'flex-start',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing(2),
+                paddingHorizontal: spacing(3),
+                paddingVertical: spacing(2),
+                borderRadius: radii.pill,
+                backgroundColor: `${colors.primary}22`,
+                borderWidth: 1,
+                borderColor: `${colors.primary}44`,
+                marginBottom: spacing(4),
+              }}
+            >
+              <Ionicons name="lock-closed-outline" size={13} color={colors.primary} />
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.primary, fontWeight: '700' },
+                ]}
+              >
+                SECURITY
+              </Text>
+            </View>
+
+            <Text style={[typography.hero, { color: colors.textPrimary }]}>
+              Password Settings
+            </Text>
+            <Text
               style={[
-                styles.topBar,
+                typography.body,
                 {
-                  paddingHorizontal: ui.padX,
-                  borderBottomColor: colors.border,
-                  backgroundColor: colors.surface,
+                  color: colors.textSecondary,
+                  marginTop: spacing(2),
+                  maxWidth: 480,
+                  lineHeight: 24,
                 },
               ]}
             >
-              <View style={styles.topBarLeft}>
-                <HeaderIconButton icon="menu-outline" label="Open menu" colors={colors} onPress={openMenu} />
-                <HeaderIconButton
-                  icon="chevron-back"
-                  label="Go back"
-                  colors={colors}
-                  onPress={() => router.back()}
-                />
-              </View>
+              Enter your current password and choose a strong new one. The
+              strength indicator will help guide your choice.
+            </Text>
+          </View>
 
-              <View style={styles.headerCenter}>
-                <Text style={[styles.topTitle, typography.title, { color: colors.text }]}>Change Password</Text>
-                <Text style={[styles.topSubtitle, typography.caption, { color: colors.textMuted }]}>
-                  Update your account password securely
-                </Text>
-              </View>
-
-              <HeaderIconButton
-                icon="settings-outline"
-                label="Open settings"
-                colors={colors}
-                onPress={() => router.push('/student/settings')}
-              />
+          {/* Icon cluster — tablet/desktop */}
+          {!isMobile && (
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: radii.xxl,
+                backgroundColor: `${colors.primary}22`,
+                borderWidth: 1,
+                borderColor: `${colors.primary}44`,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="lock-closed" size={32} color={colors.primary} />
             </View>
-
-            <ScrollView contentContainerStyle={{ paddingHorizontal: ui.padX, paddingVertical: ui.padY }}>
-              <View style={[styles.heroCard, { backgroundColor: colors.cardAlt, borderColor: colors.border }, elevation]}>
-                <View style={styles.heroBadge}>
-                  <Ionicons name="lock-closed-outline" size={16} color={colors.text} />
-                  <Text style={[typography.caption, { color: colors.text }]}>Security</Text>
-                </View>
-
-                <Text style={[typography.hero, { color: colors.text, marginTop: spacing(4) }]}>Password Settings</Text>
-                <Text style={[typography.body, { color: colors.textMuted, marginTop: spacing(2) }]}>
-                  Enter your current password and choose a strong new password. This screen is fully ready for backend
-                  integration later.
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.formCard,
-                  {
-                    width: ui.cardWidth as any,
-                    alignSelf: 'center',
-                    marginTop: ui.gap,
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
-                  elevation,
-                ]}
-              >
-                <InputBlock
-                  label="Current password"
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  secureTextEntry={!showCurrent}
-                  icon={showCurrent ? 'eye-off-outline' : 'eye-outline'}
-                  onIconPress={() => setShowCurrent((prev) => !prev)}
-                  colors={colors}
-                />
-
-                <InputBlock
-                  label="New password"
-                  value={nextPassword}
-                  onChangeText={setNextPassword}
-                  secureTextEntry={!showNext}
-                  icon={showNext ? 'eye-off-outline' : 'eye-outline'}
-                  onIconPress={() => setShowNext((prev) => !prev)}
-                  colors={colors}
-                />
-
-                <InputBlock
-                  label="Confirm new password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirm}
-                  icon={showConfirm ? 'eye-off-outline' : 'eye-outline'}
-                  onIconPress={() => setShowConfirm((prev) => !prev)}
-                  colors={colors}
-                />
-
-                <View
-                  style={[
-                    styles.tipCard,
-                    {
-                      backgroundColor: colors.primarySoft,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.text} />
-                  <Text style={[typography.caption, { color: colors.textMuted, flex: 1 }]}>
-                    Use at least 8 characters with a mix of letters, numbers, and symbols for a stronger password.
-                  </Text>
-                </View>
-
-                <Pressable
-                  onPress={onSave}
-                  accessibilityRole="button"
-                  accessibilityLabel="Save password"
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.primary,
-                    },
-                    pressed ? styles.pressDown : null,
-                  ]}
-                >
-                  <Ionicons name="save-outline" size={18} color={colors.white} />
-                  <Text style={[styles.primaryButtonText, { color: colors.white }]}>SAVE PASSWORD</Text>
-                </Pressable>
-              </View>
-            </ScrollView>
-          </SafeAreaView>
+          )}
         </View>
       </View>
     </View>
   );
-}
 
-function HeaderIconButton({
-  icon,
-  label,
-  onPress,
-  colors,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-  colors: ThemeColors;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => {
-        const state = getPressableState({ pressed } as PressableStateCallbackType);
-        return [
-          styles.headerIconButton,
-          {
-            backgroundColor: colors.surfaceMuted,
-            borderColor: colors.border,
-          },
-          state.hovered && Platform.OS === 'web' ? styles.hoverLift : null,
-          pressed ? styles.pressDown : null,
-        ];
-      }}
+  // ── Form card ──────────────────────────────────────────────────────────────
+  const FormCard = (
+    <View
+      style={[
+        {
+          backgroundColor: colors.surface,
+          borderRadius: radii.xxl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: 'hidden',
+        },
+        elevation,
+      ]}
     >
-      <Ionicons name={icon} size={20} color={colors.text} />
-    </Pressable>
-  );
-}
-
-function InputBlock({
-  label,
-  value,
-  onChangeText,
-  secureTextEntry,
-  icon,
-  onIconPress,
-  colors,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  secureTextEntry: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
-  onIconPress: () => void;
-  colors: ThemeColors;
-}) {
-  return (
-    <View style={{ marginBottom: spacing(4) }}>
-      <Text style={[typography.label, { color: colors.text, marginBottom: spacing(2) }]}>{label}</Text>
-
-      <View
-        style={[
-          styles.inputWrap,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.borderStrong,
-          },
-        ]}
-      >
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={secureTextEntry}
-          placeholder={label}
-          placeholderTextColor={colors.textSoft}
-          style={[styles.input, { color: colors.text }]}
+      <View style={{ height: 3, backgroundColor: colors.primary }} />
+      <View style={{ padding: isMobile ? spacing(5) : spacing(7) }}>
+        {/* Current password */}
+        <InputBlock
+          label="Current Password"
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+          secureTextEntry={!showCurrent}
+          showToggle={showCurrent}
+          onToggle={() => setShowCurrent((p) => !p)}
+          placeholder="Enter your current password"
         />
 
-        <Pressable onPress={onIconPress} style={styles.eyeButton} accessibilityRole="button">
-          <Ionicons name={icon} size={20} color={colors.textMuted} />
+        {/* Divider */}
+        <View
+          style={{
+            height: 1,
+            backgroundColor: colors.divider,
+            marginBottom: spacing(5),
+          }}
+        />
+
+        {/* New password */}
+        <InputBlock
+          label="New Password"
+          value={nextPassword}
+          onChangeText={setNextPassword}
+          secureTextEntry={!showNext}
+          showToggle={showNext}
+          onToggle={() => setShowNext((p) => !p)}
+          placeholder="Choose a strong new password"
+          showStrength
+        />
+
+        {/* Confirm new password */}
+        <InputBlock
+          label="Confirm New Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={!showConfirm}
+          showToggle={showConfirm}
+          onToggle={() => setShowConfirm((p) => !p)}
+          placeholder="Re-enter your new password"
+          matchValue={nextPassword}
+        />
+
+        {/* Security tip — inline (visible on all sizes, sidebar echoes it on desktop) */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: spacing(3),
+            padding: spacing(4),
+            backgroundColor: `${colors.primary}14`,
+            borderRadius: radii.lg,
+            borderLeftWidth: 3,
+            borderLeftColor: colors.primary,
+            marginBottom: spacing(6),
+          }}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={18}
+            color={colors.primary}
+            style={{ marginTop: 1 }}
+          />
+          <Text
+            style={[
+              typography.caption,
+              { color: colors.textSecondary, flex: 1, lineHeight: 18 },
+            ]}
+          >
+            Use at least 8 characters with a mix of letters, numbers, and
+            symbols for a stronger password.
+          </Text>
+        </View>
+
+        {/* Save button */}
+        <Pressable
+          onPress={handleSave}
+          accessibilityRole="button"
+          accessibilityLabel="Save new password"
+          style={({ pressed }) => ({
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+            gap: spacing(2),
+            minHeight: 54,
+            borderRadius: radii.lg,
+            backgroundColor: colors.primary,
+            opacity: pressed ? 0.88 : 1,
+            transform: pressed ? [{ scale: 0.98 }] : [],
+          })}
+        >
+          <Ionicons name="save-outline" size={19} color="#fff" />
+          <Text
+            style={[
+              typography.label,
+              { color: '#fff', letterSpacing: 0.5, fontWeight: '900' },
+            ]}
+          >
+            SAVE PASSWORD
+          </Text>
         </Pressable>
       </View>
     </View>
   );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render — DashboardLayout owns: SafeAreaView, scroll, header, sidebar nav,
+  // dark blue theme, and menu button.
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <DashboardLayout
+      title="Change Password"
+      subtitle="Update your account password securely"
+      showPointsCard={false}
+    >
+      {/* Back navigation + breadcrumb + settings shortcut */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing(3),
+          marginBottom: spacing(6),
+        }}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={({ pressed }) => ({
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            gap: spacing(2),
+            paddingHorizontal: spacing(4),
+            paddingVertical: spacing(2),
+            borderRadius: radii.lg,
+            backgroundColor: colors.surfaceAlt,
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Ionicons name="arrow-back" size={17} color={colors.primary} />
+          <Text style={[typography.label, { color: colors.primary }]}>Back</Text>
+        </Pressable>
+
+        <Text style={[typography.caption, { color: colors.textMuted, flex: 1 }]}>
+          Settings › Change Password
+        </Text>
+
+        <Pressable
+          onPress={() => router.push('/student/settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
+          style={({ pressed }) => ({
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            gap: spacing(2),
+            paddingHorizontal: spacing(4),
+            paddingVertical: spacing(2),
+            borderRadius: radii.lg,
+            backgroundColor: colors.surfaceAlt,
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Ionicons name="settings-outline" size={16} color={colors.textSecondary} />
+          <Text style={[typography.label, { color: colors.textSecondary }]}>Settings</Text>
+        </Pressable>
+      </View>
+
+      {/* Desktop two-column; mobile/tablet stacked */}
+      <View
+        style={{
+          flexDirection: isDesktop ? 'row' : 'column',
+          gap: spacing(8),
+          alignItems: 'flex-start',
+        }}
+      >
+        {/* Main column — max-width centred on tablet */}
+        <View
+          style={{
+            flex: 1,
+            maxWidth: isDesktop ? undefined : 640,
+            alignSelf: isDesktop ? undefined : 'center',
+            width: isDesktop ? undefined : '100%',
+          }}
+        >
+          {HeroBanner}
+          {FormCard}
+        </View>
+
+        {/* Sidebar — desktop only */}
+        {isDesktop && <SidebarPanel />}
+      </View>
+    </DashboardLayout>
+  );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  shell: { overflow: 'hidden' },
-  shellDesktop: { borderWidth: 1 },
-  safe: { flex: 1 },
-
-  topBar: {
-    minHeight: 72,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(3),
-    paddingVertical: spacing(3),
-  },
-  topBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(2),
-  },
-  headerCenter: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-  },
-  topTitle: { textAlign: 'center' },
-  topSubtitle: { marginTop: spacing(1), textAlign: 'center' },
-
-  headerIconButton: {
-    width: MIN_TAP,
-    height: MIN_TAP,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  heroCard: {
-    borderWidth: 1,
-    borderRadius: radii.xl,
-    padding: spacing(5),
-  },
-  heroBadge: {
-    alignSelf: 'flex-start',
-    minHeight: 38,
-    paddingHorizontal: spacing(3),
-    paddingVertical: spacing(2),
-    borderRadius: radii.pill,
-    backgroundColor: 'rgba(87,175,194,0.14)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(2),
-  },
-
-  formCard: {
-    borderWidth: 1,
-    borderRadius: radii.xl,
-    padding: spacing(5),
-  },
-  inputWrap: {
-    minHeight: 54,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: spacing(4),
-    paddingRight: spacing(2),
-  },
-  input: {
-    flex: 1,
-    minHeight: 52,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  eyeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  tipCard: {
-    marginTop: spacing(2),
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing(3),
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing(2),
-  },
-
-  primaryButton: {
-    marginTop: spacing(5),
-    minHeight: 54,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing(2),
-  },
-  primaryButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-
-  hoverLift: {
-    transform: [{ translateY: -1 }],
-  },
-  pressDown: {
-    opacity: 0.96,
-    transform: [{ scale: 0.98 }],
-  },
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// Exported Screen
+// ─────────────────────────────────────────────────────────────────────────────
+export default function ChangePasswordScreen() {
+  return (
+    <StudentMenuProvider>
+      <ChangePasswordContent />
+    </StudentMenuProvider>
+  );
+}

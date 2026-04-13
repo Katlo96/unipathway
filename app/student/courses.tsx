@@ -3,16 +3,11 @@ import {
   View,
   Text,
   Pressable,
-  StyleSheet,
   useWindowDimensions,
   Platform,
-  ScrollView,
   TextInput,
-  useColorScheme,
-  type PressableStateCallbackType,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
@@ -20,23 +15,20 @@ import {
   useStudentMenu,
 } from '../../components/student/StudentMenu';
 
-type Breakpoint = 'mobile' | 'tablet' | 'desktop';
+// ─────────────────────────────────────────────────────────────────────────────
+// DashboardLayout & design tokens
+// ─────────────────────────────────────────────────────────────────────────────
+import DashboardLayout, {
+  spacing,
+  typography,
+  radii,
+  useTheme,
+} from '../../components/student/DashboardLayout';
 
-type ThemeColors = {
-  appBg: string;
-  surface: string;
-  surfaceMuted: string;
-  card: string;
-  cardAlt: string;
-  primary: string;
-  primarySoft: string;
-  text: string;
-  textMuted: string;
-  textSoft: string;
-  border: string;
-  borderStrong: string;
-  white: string;
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 
 type Course = {
   id: string;
@@ -45,8 +37,12 @@ type Course = {
   location: string;
   tagline: string;
   badge: string;
+  field: string;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Data
+// ─────────────────────────────────────────────────────────────────────────────
 const COURSES: Course[] = [
   {
     id: 'cs-ub',
@@ -55,6 +51,7 @@ const COURSES: Course[] = [
     location: 'Gaborone',
     tagline: 'Strong foundation in computing',
     badge: 'CS',
+    field: 'Technology',
   },
   {
     id: 'acct-botho',
@@ -63,6 +60,7 @@ const COURSES: Course[] = [
     location: 'Gaborone',
     tagline: 'Career-focused professional pathway',
     badge: 'AC',
+    field: 'Business',
   },
   {
     id: 'eng-biust',
@@ -71,6 +69,7 @@ const COURSES: Course[] = [
     location: 'Palapye',
     tagline: 'Hands-on engineering excellence',
     badge: 'ME',
+    field: 'Engineering',
   },
   {
     id: 'design-luct',
@@ -79,561 +78,112 @@ const COURSES: Course[] = [
     location: 'Gaborone',
     tagline: 'Creativity meets technology',
     badge: 'DM',
+    field: 'Creative',
+  },
+  {
+    id: 'law-ub',
+    name: 'Bachelor of Laws (LLB)',
+    university: 'University of Botswana',
+    location: 'Gaborone',
+    tagline: 'Legal excellence and justice',
+    badge: 'LW',
+    field: 'Law',
+  },
+  {
+    id: 'nursing-ub',
+    name: 'Bachelor of Nursing Science',
+    university: 'University of Botswana',
+    location: 'Gaborone',
+    tagline: 'Compassionate healthcare training',
+    badge: 'NS',
+    field: 'Health',
   },
 ];
 
-const BASE_SPACING = 4;
-const spacing = (n: number) => n * BASE_SPACING;
-
-const typography = {
-  hero: { fontSize: 28, lineHeight: 34, fontWeight: '900' as const },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '800' as const },
-  section: { fontSize: 16, lineHeight: 22, fontWeight: '800' as const },
-  body: { fontSize: 14, lineHeight: 20, fontWeight: '600' as const },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: '700' as const },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '700' as const },
+// Field accent colours — consistent tints for the card icon bubbles
+const FIELD_COLORS: Record<string, string> = {
+  Technology:  '#60A5FA',
+  Business:    '#34D399',
+  Engineering: '#FBBF24',
+  Creative:    '#F472B6',
+  Law:         '#A78BFA',
+  Health:      '#F87171',
 };
 
-const radii = {
-  sm: spacing(3),
-  md: spacing(4),
-  lg: spacing(5),
-  xl: spacing(6),
-  pill: 999,
-};
-
-const MAX_DESKTOP_WIDTH = 1240;
-const MIN_TAP = 44;
-
-function getBreakpoint(width: number): Breakpoint {
-  if (width < 480) return 'mobile';
-  if (width <= 1024) return 'tablet';
-  return 'desktop';
-}
-
-function getPressableState(state: PressableStateCallbackType) {
-  const hovered = (state as any).hovered === true;
-  return { pressed: state.pressed, hovered };
-}
-
-function getColors(scheme: 'light' | 'dark'): ThemeColors {
-  const light = scheme === 'light';
-
-  return {
-    appBg: light ? '#F4F8FB' : '#081018',
-    surface: light ? '#FFFFFF' : '#121C26',
-    surfaceMuted: light ? '#EEF4F7' : '#182430',
-    card: light ? '#FFFFFF' : '#16202B',
-    cardAlt: light ? '#F7FBFD' : '#1A2632',
-    primary: '#57AFC2',
-    primarySoft: light ? 'rgba(87,175,194,0.14)' : 'rgba(87,175,194,0.22)',
-    text: light ? '#0B0F12' : '#EAF2F8',
-    textMuted: light ? 'rgba(11,15,18,0.72)' : 'rgba(234,242,248,0.78)',
-    textSoft: light ? 'rgba(11,15,18,0.55)' : 'rgba(234,242,248,0.58)',
-    border: light ? 'rgba(11,15,18,0.08)' : 'rgba(234,242,248,0.12)',
-    borderStrong: light ? 'rgba(11,15,18,0.12)' : 'rgba(234,242,248,0.18)',
-    white: '#FFFFFF',
-  };
-}
-
-function getElevation(scheme: 'light' | 'dark'): ViewStyle {
-  return Platform.select<ViewStyle>({
-    ios: {
-      shadowColor: '#000',
-      shadowOpacity: scheme === 'light' ? 0.08 : 0.18,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 10 },
-    },
-    android: {
-      elevation: scheme === 'light' ? 3 : 2,
-    },
-    web: {
-      boxShadow:
-        scheme === 'light'
-          ? '0 10px 28px rgba(0,0,0,0.08)'
-          : '0 10px 28px rgba(0,0,0,0.28)',
-    } as any,
-    default: {},
-  }) as ViewStyle;
-}
-
-export default function CoursesScreen() {
-  return (
-    <StudentMenuProvider>
-      <CoursesContent />
-    </StudentMenuProvider>
-  );
-}
-
-function CoursesContent() {
-  const { width, height } = useWindowDimensions();
-  const rawScheme = useColorScheme();
-  const scheme: 'light' | 'dark' = rawScheme === 'dark' ? 'dark' : 'light';
-  const colors = useMemo(() => getColors(scheme), [scheme]);
-  const elevation = useMemo(() => getElevation(scheme), [scheme]);
-  const bp = useMemo(() => getBreakpoint(width), [width]);
-  const { openMenu } = useStudentMenu();
-
-  const ui = useMemo(() => {
-    const isMobile = bp === 'mobile';
-    const isTablet = bp === 'tablet';
-    const isDesktop = bp === 'desktop';
-
-    return {
-      isMobile,
-      isTablet,
-      isDesktop,
-      shellWidth: isDesktop ? Math.min(MAX_DESKTOP_WIDTH, width - spacing(8) * 2) : width,
-      shellHeight: isDesktop ? Math.min(980, Math.round(height * 0.92)) : height,
-      shellRadius: isDesktop ? radii.xl : 0,
-      shellPadding: isDesktop ? spacing(7) : 0,
-      padX: isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(4),
-      padY: isDesktop ? spacing(7) : isTablet ? spacing(6) : spacing(5),
-      gap: isDesktop ? spacing(6) : isTablet ? spacing(5) : spacing(4),
-      railWidth: isDesktop ? 330 : 0,
-      titleSize: isDesktop ? 24 : isTablet ? 22 : 20,
-      subtitleSize: isDesktop ? 14 : 13,
-      gridMin: isDesktop ? 280 : isTablet ? 260 : 100,
-    };
-  }, [bp, width, height]);
-
-  const [search, setSearch] = useState('');
-
-  const filteredCourses = useMemo(() => {
-    if (!search.trim()) return COURSES;
-    const q = search.toLowerCase();
-
-    return COURSES.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.university.toLowerCase().includes(q) ||
-        c.location.toLowerCase().includes(q) ||
-        c.tagline.toLowerCase().includes(q)
-    );
-  }, [search]);
-
-  const handleViewCourse = useCallback((id: string) => {
-    router.push({
-      pathname: '/student/course-details',
-      params: { id },
-    });
-  }, []);
-
-  return (
-    <View style={[styles.page, { backgroundColor: colors.appBg }]}>
-      <View style={[styles.center, { padding: ui.shellPadding }]}>
-        <View
-          style={[
-            styles.shell,
-            {
-              width: ui.shellWidth,
-              height: ui.shellHeight,
-              borderRadius: ui.shellRadius,
-              backgroundColor: colors.surfaceMuted,
-            },
-            ui.isDesktop
-              ? [
-                  styles.shellDesktop,
-                  {
-                    borderColor: colors.border,
-                  },
-                  elevation,
-                ]
-              : null,
-          ]}
-        >
-          <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-            <View
-              style={[
-                styles.topBar,
-                {
-                  paddingHorizontal: ui.padX,
-                  borderBottomColor: colors.border,
-                  backgroundColor: colors.surface,
-                },
-              ]}
-            >
-              <View style={styles.topBarLeft}>
-                <HeaderIconButton
-                  icon="menu-outline"
-                  label="Open menu"
-                  colors={colors}
-                  onPress={openMenu}
-                />
-                <HeaderIconButton
-                  icon="chevron-back"
-                  label="Go back"
-                  colors={colors}
-                  onPress={() => router.back()}
-                />
-              </View>
-
-              <View style={styles.headerCenter}>
-                <Text style={[styles.topTitle, typography.title, { color: colors.text, fontSize: ui.titleSize }]}>
-                  Courses
-                </Text>
-                <Text
-                  style={[
-                    styles.topSubtitle,
-                    typography.caption,
-                    {
-                      color: colors.textMuted,
-                      fontSize: ui.subtitleSize,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  Explore programs across Botswana and beyond
-                </Text>
-              </View>
-
-              <HeaderIconButton
-                icon="search-outline"
-                label="Search courses"
-                colors={colors}
-                onPress={() => {}}
-              />
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={ui.isDesktop}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: ui.padY }}
-            >
-              <View
-                style={[
-                  { paddingHorizontal: ui.padX, marginTop: ui.gap },
-                  ui.isDesktop
-                    ? {
-                        flexDirection: 'row',
-                        gap: ui.gap,
-                        alignItems: 'flex-start',
-                      }
-                    : null,
-                ]}
-              >
-                {ui.isDesktop ? (
-                  <View style={{ width: ui.railWidth }}>
-                    <SurfaceCard colors={colors} elevation={elevation} style={{ padding: spacing(5) }}>
-                      <Text style={[typography.section, { color: colors.text }]}>Browse</Text>
-                      <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing(2) }]}>
-                        Search by course title, institution, location, or field and open detailed program information.
-                      </Text>
-
-                      <View style={{ marginTop: spacing(4), gap: spacing(3) }}>
-                        <MiniStatCard
-                          icon="book-outline"
-                          label="Programs"
-                          value={`${COURSES.length}`}
-                          colors={colors}
-                        />
-                        <MiniStatCard
-                          icon="search-outline"
-                          label="Results"
-                          value={`${filteredCourses.length}`}
-                          colors={colors}
-                        />
-                        <MiniStatCard
-                          icon="school-outline"
-                          label="Institutions"
-                          value="Multiple"
-                          colors={colors}
-                        />
-                      </View>
-
-                      <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: spacing(4) }]} />
-
-                      <Text style={[typography.section, { color: colors.text }]}>Quick actions</Text>
-
-                      <View style={{ marginTop: spacing(3), gap: spacing(2) }}>
-                        <ActionButton
-                          icon="menu-outline"
-                          label="Open menu"
-                          colors={colors}
-                          onPress={openMenu}
-                        />
-                        <ActionButton
-                          icon="refresh-outline"
-                          label="Clear search"
-                          colors={colors}
-                          onPress={() => setSearch('')}
-                        />
-                      </View>
-
-                      <Text style={[typography.caption, { color: colors.textSoft, marginTop: spacing(4) }]}>
-                        Tip: Search broad terms like engineering, science, media, or accounting to discover matching programs faster.
-                      </Text>
-                    </SurfaceCard>
-                  </View>
-                ) : null}
-
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <SurfaceCard
-                    colors={colors}
-                    elevation={elevation}
-                    style={{
-                      padding: ui.isMobile ? spacing(4) : spacing(5),
-                      backgroundColor: colors.cardAlt,
-                    }}
-                  >
-                    <View style={[styles.heroRow, ui.isMobile ? styles.heroRowMobile : null]}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={[typography.hero, { color: colors.text }]}>Find your next course</Text>
-                        <Text
-                          style={[
-                            typography.body,
-                            {
-                              color: colors.textMuted,
-                              marginTop: spacing(2),
-                            },
-                          ]}
-                        >
-                          Explore programs, compare institutions, and open details to see which pathway fits your academic goals.
-                        </Text>
-                      </View>
-
-                      <View style={styles.heroBadgeWrap}>
-                        <View
-                          style={[
-                            styles.heroBadge,
-                            {
-                              backgroundColor: colors.primarySoft,
-                              borderColor: colors.border,
-                            },
-                          ]}
-                        >
-                          <Ionicons name="book-outline" size={16} color={colors.text} />
-                          <Text style={[typography.caption, { color: colors.text }]}>
-                            {filteredCourses.length} result{filteredCourses.length === 1 ? '' : 's'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </SurfaceCard>
-
-                  <View style={{ marginTop: spacing(5) }}>
-                    <Text style={[styles.sectionTitle, typography.caption, { color: colors.textSoft }]}>
-                      SEARCH
-                    </Text>
-
-                    <View
-                      style={[
-                        styles.searchContainer,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                        },
-                        elevation,
-                      ]}
-                    >
-                      <Ionicons name="search-outline" size={20} color={colors.textMuted} />
-                      <TextInput
-                        value={search}
-                        onChangeText={setSearch}
-                        placeholder="Search courses, universities..."
-                        placeholderTextColor={colors.textSoft}
-                        style={[styles.searchInput, typography.body, { color: colors.text }]}
-                        accessibilityLabel="Search courses"
-                      />
-                      {search.length > 0 ? (
-                        <Pressable
-                          onPress={() => setSearch('')}
-                          accessibilityRole="button"
-                          accessibilityLabel="Clear search"
-                          style={({ pressed }) => [styles.clearButton, pressed ? styles.pressDown : null]}
-                        >
-                          <Ionicons name="close-circle-outline" size={20} color={colors.textMuted} />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  </View>
-
-                  <View style={{ marginTop: spacing(5) }}>
-                    <Text style={[styles.sectionTitle, typography.caption, { color: colors.textSoft }]}>
-                      COURSES
-                    </Text>
-
-                    {filteredCourses.length === 0 ? (
-                      <SurfaceCard colors={colors} elevation={elevation} style={{ padding: spacing(8) }}>
-                        <View style={styles.emptyState}>
-                          <View
-                            style={[
-                              styles.emptyIconWrap,
-                              {
-                                backgroundColor: colors.primarySoft,
-                                borderColor: colors.border,
-                              },
-                            ]}
-                          >
-                            <Ionicons name="search-outline" size={28} color={colors.text} />
-                          </View>
-
-                          <Text style={[typography.section, { color: colors.text, marginTop: spacing(4) }]}>
-                            No courses found
-                          </Text>
-                          <Text
-                            style={[
-                              typography.body,
-                              {
-                                color: colors.textMuted,
-                                marginTop: spacing(2),
-                                textAlign: 'center',
-                              },
-                            ]}
-                          >
-                            Try a different course title, university, location, or keyword.
-                          </Text>
-
-                          <Pressable
-                            onPress={() => setSearch('')}
-                            accessibilityRole="button"
-                            accessibilityLabel="Reset search"
-                            style={({ pressed }) => [
-                              styles.resetButton,
-                              {
-                                backgroundColor: colors.primary,
-                                borderColor: colors.primary,
-                              },
-                              pressed ? styles.pressDown : null,
-                            ]}
-                          >
-                            <Ionicons name="refresh-outline" size={18} color={colors.white} />
-                            <Text style={[styles.resetButtonText, { color: colors.white }]}>RESET SEARCH</Text>
-                          </Pressable>
-                        </View>
-                      </SurfaceCard>
-                    ) : (
-                      <View
-                        style={[
-                          styles.grid,
-                          {
-                            gap: spacing(4),
-                          },
-                        ]}
-                      >
-                        {filteredCourses.map((course) => (
-                          <CourseCard
-                            key={course.id}
-                            course={course}
-                            colors={colors}
-                            elevation={elevation}
-                            minWidth={ui.gridMin}
-                            onPress={() => handleViewCourse(course.id)}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function SurfaceCard({
-  children,
-  colors,
-  elevation,
-  style,
-}: {
-  children: React.ReactNode;
-  colors: ThemeColors;
-  elevation: ViewStyle;
-  style?: ViewStyle;
-}) {
-  return (
-    <View
-      style={[
-        styles.surfaceCard,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
+// ─────────────────────────────────────────────────────────────────────────────
+// Elevation helper
+// ─────────────────────────────────────────────────────────────────────────────
+function useElevation(intensity: 'sm' | 'md' | 'lg' = 'md'): ViewStyle {
+  return useMemo<ViewStyle>(() => {
+    const opacity = 0.28;
+    const radius = intensity === 'sm' ? 6 : intensity === 'md' ? 14 : 22;
+    const offsetY = intensity === 'sm' ? 2 : intensity === 'md' ? 5 : 10;
+    return (
+      Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: offsetY },
+          shadowOpacity: opacity,
+          shadowRadius: radius,
         },
-        elevation,
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+        android: {
+          elevation: intensity === 'sm' ? 3 : intensity === 'md' ? 6 : 12,
+        },
+        web: {
+          boxShadow: `0 ${offsetY}px ${radius * 1.5}px rgba(0,0,0,${opacity})`,
+        },
+        default: {},
+      }) ?? {}
+    );
+  }, [intensity]);
 }
 
-function HeaderIconButton({
-  icon,
-  label,
-  onPress,
-  colors,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-  colors: ThemeColors;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => {
-        const state = getPressableState({ pressed } as PressableStateCallbackType);
-        return [
-          styles.headerIconButton,
-          {
-            backgroundColor: colors.surfaceMuted,
-            borderColor: colors.border,
-          },
-          state.hovered && Platform.OS === 'web' ? styles.hoverLift : null,
-          pressed ? styles.pressDown : null,
-        ];
-      }}
-    >
-      <Ionicons name={icon} size={20} color={colors.text} />
-    </Pressable>
-  );
-}
-
-function MiniStatCard({
+// ─────────────────────────────────────────────────────────────────────────────
+// StatPill
+// ─────────────────────────────────────────────────────────────────────────────
+function StatPill({
   icon,
   label,
   value,
-  colors,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
-  colors: ThemeColors;
 }) {
+  const colors = useTheme();
+  const elevation = useElevation('sm');
   return (
     <View
       style={[
-        styles.miniStatCard,
         {
-          backgroundColor: colors.cardAlt,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing(3),
+          paddingHorizontal: spacing(4),
+          paddingVertical: spacing(3),
+          backgroundColor: colors.surfaceAlt,
+          borderRadius: radii.lg,
+          borderWidth: 1,
           borderColor: colors.border,
         },
+        elevation,
       ]}
     >
       <View
-        style={[
-          styles.miniStatIcon,
-          {
-            backgroundColor: colors.primarySoft,
-            borderColor: colors.border,
-          },
-        ]}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: radii.md,
+          backgroundColor: `${colors.primary}22`,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <Ionicons name={icon} size={16} color={colors.text} />
+        <Ionicons name={icon} size={16} color={colors.primary} />
       </View>
-
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={[typography.caption, { color: colors.textSoft }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <Text style={[typography.label, { color: colors.text, marginTop: spacing(1) }]} numberOfLines={1}>
+      <View style={{ flex: 1 }}>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
+        <Text style={[typography.bodyStrong, { color: colors.textPrimary, marginTop: 2 }]}>
           {value}
         </Text>
       </View>
@@ -641,363 +191,693 @@ function MiniStatCard({
   );
 }
 
-function ActionButton({
+// ─────────────────────────────────────────────────────────────────────────────
+// SidebarAction
+// ─────────────────────────────────────────────────────────────────────────────
+function SidebarAction({
   icon,
   label,
   onPress,
-  colors,
+  variant = 'ghost',
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-  colors: ThemeColors;
+  variant?: 'ghost' | 'primary';
 }) {
+  const colors = useTheme();
+  const isPrimary = variant === 'primary';
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [
-        styles.actionButton,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-        },
-        pressed ? styles.pressDown : null,
-      ]}
+      style={({ pressed }) => ({
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        gap: spacing(3),
+        paddingHorizontal: spacing(4),
+        paddingVertical: spacing(3),
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: isPrimary ? colors.primary : colors.border,
+        backgroundColor: isPrimary ? colors.primary : colors.surfaceAlt,
+        opacity: pressed ? 0.85 : 1,
+        transform: pressed ? [{ scale: 0.98 }] : [],
+      })}
     >
-      <Ionicons name={icon} size={18} color={colors.text} />
-      <Text style={[styles.actionButtonText, { color: colors.text }]}>{label}</Text>
+      <Ionicons name={icon} size={17} color={isPrimary ? '#fff' : colors.textPrimary} />
+      <Text style={[typography.label, { color: isPrimary ? '#fff' : colors.textPrimary }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CourseCard
+// ─────────────────────────────────────────────────────────────────────────────
 function CourseCard({
   course,
-  colors,
-  elevation,
-  minWidth,
   onPress,
 }: {
   course: Course;
-  colors: ThemeColors;
-  elevation: ViewStyle;
-  minWidth: number;
   onPress: () => void;
 }) {
+  const colors = useTheme();
+  const elevation = useElevation('md');
+  const fieldColor = FIELD_COLORS[course.field] ?? colors.primary;
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Open ${course.name}`}
-      style={({ pressed }) => [
-        styles.courseCard,
+      style={({ pressed }) => ([
         {
-          minWidth,
+          flex: 1,
+          minWidth: 260,
           backgroundColor: colors.card,
+          borderRadius: radii.xxl,
+          borderWidth: 1,
           borderColor: colors.border,
+          padding: spacing(5),
+          overflow: 'hidden' as const,
+          opacity: pressed ? 0.9 : 1,
+          transform: pressed ? [{ scale: 0.98 }] : [],
         },
         elevation,
-        pressed ? styles.pressDown : null,
-      ]}
+      ])}
     >
-      <View style={styles.cardTop}>
+      {/* Top row: badge + chevron */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Field-coloured badge bubble */}
         <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor: colors.primarySoft,
-              borderColor: colors.border,
-            },
-          ]}
+          style={{
+            paddingHorizontal: spacing(3),
+            paddingVertical: spacing(2),
+            borderRadius: radii.pill,
+            backgroundColor: `${fieldColor}1A`,
+            borderWidth: 1,
+            borderColor: `${fieldColor}33`,
+          }}
         >
-          <Text style={[styles.badgeText, { color: colors.primary }]}>{course.badge}</Text>
+          <Text style={[typography.label, { color: fieldColor, letterSpacing: 0.4 }]}>
+            {course.badge}
+          </Text>
         </View>
 
         <View
-          style={[
-            styles.chevronWrap,
-            {
-              backgroundColor: colors.cardAlt,
-              borderColor: colors.border,
-            },
-          ]}
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: radii.md,
+            backgroundColor: colors.surfaceAlt,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Ionicons name="chevron-forward" size={16} color={colors.textSoft} />
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </View>
       </View>
 
-      <Text style={[styles.courseName, { color: colors.text, marginTop: spacing(4) }]} numberOfLines={2}>
+      {/* Course name */}
+      <Text
+        style={[typography.h2, { color: colors.textPrimary, marginTop: spacing(4) }]}
+        numberOfLines={2}
+      >
         {course.name}
       </Text>
 
-      <View style={styles.metaRow}>
-        <Ionicons name="school-outline" size={14} color={colors.textMuted} />
-        <Text style={[typography.caption, { color: colors.textMuted }]} numberOfLines={1}>
+      {/* University */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginTop: spacing(2) }}>
+        <Ionicons name="school-outline" size={13} color={fieldColor} />
+        <Text style={[typography.caption, { color: colors.textSecondary }]} numberOfLines={1}>
           {course.university}
         </Text>
       </View>
 
-      <View style={styles.metaRow}>
-        <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-        <Text style={[typography.caption, { color: colors.textMuted }]} numberOfLines={1}>
+      {/* Location */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginTop: spacing(1) }}>
+        <Ionicons name="location-outline" size={13} color={colors.primary} />
+        <Text style={[typography.caption, { color: colors.textSecondary }]} numberOfLines={1}>
           {course.location}
         </Text>
       </View>
 
-      <Text style={[typography.body, { color: colors.textMuted, marginTop: spacing(3) }]} numberOfLines={2}>
+      {/* Tagline */}
+      <Text
+        style={[typography.body, { color: colors.textSecondary, marginTop: spacing(3), lineHeight: 20 }]}
+        numberOfLines={2}
+      >
         {course.tagline}
       </Text>
 
+      {/* Field pill */}
+      <View style={{ marginTop: spacing(3) }}>
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            paddingHorizontal: spacing(3),
+            paddingVertical: spacing(1),
+            borderRadius: radii.pill,
+            backgroundColor: `${fieldColor}1A`,
+            borderWidth: 1,
+            borderColor: `${fieldColor}33`,
+          }}
+        >
+          <Text style={[typography.caption, { color: fieldColor, fontWeight: '700' }]}>
+            {course.field}
+          </Text>
+        </View>
+      </View>
+
+      {/* Footer */}
       <View
-        style={[
-          styles.cardFooter,
-          {
-            borderTopColor: colors.border,
-          },
-        ]}
+        style={{
+          marginTop: spacing(4),
+          paddingTop: spacing(3),
+          borderTopWidth: 1,
+          borderTopColor: colors.divider,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
       >
         <Text style={[typography.label, { color: colors.primary }]}>View details</Text>
-        <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+        <Ionicons name="arrow-forward" size={15} color={colors.primary} />
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shell: {
-    overflow: 'hidden',
-  },
-  shellDesktop: {
-    borderWidth: 1,
-  },
-  safe: {
-    flex: 1,
-  },
+// ─────────────────────────────────────────────────────────────────────────────
+// EmptyState
+// ─────────────────────────────────────────────────────────────────────────────
+function EmptyState({ onReset }: { onReset: () => void }) {
+  const colors = useTheme();
+  const elevation = useElevation('sm');
+  return (
+    <View
+      style={[
+        {
+          alignItems: 'center',
+          padding: spacing(10),
+          backgroundColor: colors.card,
+          borderRadius: radii.xxl,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        elevation,
+      ]}
+    >
+      <View
+        style={{
+          width: 68,
+          height: 68,
+          borderRadius: radii.xl,
+          backgroundColor: `${colors.primary}22`,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: spacing(5),
+        }}
+      >
+        <Ionicons name="search-outline" size={28} color={colors.primary} />
+      </View>
+      <Text style={[typography.h2, { color: colors.textPrimary, textAlign: 'center' }]}>
+        No courses found
+      </Text>
+      <Text
+        style={[
+          typography.body,
+          { color: colors.textSecondary, marginTop: spacing(2), textAlign: 'center', maxWidth: 300 },
+        ]}
+      >
+        Try a different course title, university, location, or keyword.
+      </Text>
+      <Pressable
+        onPress={onReset}
+        accessibilityRole="button"
+        accessibilityLabel="Reset search"
+        style={({ pressed }) => ({
+          marginTop: spacing(6),
+          flexDirection: 'row' as const,
+          alignItems: 'center' as const,
+          gap: spacing(2),
+          paddingHorizontal: spacing(6),
+          paddingVertical: spacing(4),
+          borderRadius: radii.lg,
+          backgroundColor: colors.primary,
+          opacity: pressed ? 0.88 : 1,
+          transform: pressed ? [{ scale: 0.98 }] : [],
+        })}
+      >
+        <Ionicons name="refresh-outline" size={17} color="#fff" />
+        <Text style={[typography.label, { color: '#fff', letterSpacing: 0.4 }]}>
+          RESET SEARCH
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
-  topBar: {
-    minHeight: 72,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(3),
-    paddingVertical: spacing(3),
-  },
-  topBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(2),
-  },
-  headerCenter: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-  },
-  topTitle: {
-    textAlign: 'center',
-  },
-  topSubtitle: {
-    marginTop: spacing(1),
-    textAlign: 'center',
-  },
+// ─────────────────────────────────────────────────────────────────────────────
+// Main content
+// ─────────────────────────────────────────────────────────────────────────────
+function CoursesContent() {
+  const { width } = useWindowDimensions();
+  const colors = useTheme();
+  const { openMenu } = useStudentMenu();
+  const elevation = useElevation('md');
 
-  headerIconButton: {
-    width: MIN_TAP,
-    height: MIN_TAP,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  const breakpoint = useMemo<Breakpoint>(() => {
+    if (width < 768) return 'mobile';
+    if (width < 1024) return 'tablet';
+    return 'desktop';
+  }, [width]);
 
-  surfaceCard: {
-    borderWidth: 1,
-    borderRadius: radii.xl,
-  },
+  const isDesktop = breakpoint === 'desktop';
+  const isMobile = breakpoint === 'mobile';
 
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing(4),
-  },
-  heroRowMobile: {
-    flexDirection: 'column',
-  },
-  heroBadgeWrap: {
-    alignItems: 'flex-end',
-  },
-  heroBadge: {
-    minHeight: 40,
-    paddingHorizontal: spacing(3),
-    paddingVertical: spacing(2),
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(2),
-  },
+  const [search, setSearch] = useState('');
 
-  sectionTitle: {
-    marginBottom: spacing(2),
-    letterSpacing: 0.4,
-  },
+  const filteredCourses = useMemo(() => {
+    if (!search.trim()) return COURSES;
+    const q = search.toLowerCase();
+    return COURSES.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.university.toLowerCase().includes(q) ||
+        c.location.toLowerCase().includes(q) ||
+        c.tagline.toLowerCase().includes(q) ||
+        c.field.toLowerCase().includes(q),
+    );
+  }, [search]);
 
-  searchContainer: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: radii.xl,
-    paddingHorizontal: spacing(4),
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: spacing(2),
-    paddingVertical: spacing(3),
-  },
-  clearButton: {
-    marginLeft: spacing(2),
-  },
+  const handleViewCourse = useCallback((id: string) => {
+    router.push({ pathname: '/student/course-details', params: { id } });
+  }, []);
 
-  divider: {
-    height: 1,
-  },
+  // Unique fields for the filter strip
+  const allFields = useMemo(
+    () => Array.from(new Set(COURSES.map((c) => c.field))),
+    [],
+  );
 
-  miniStatCard: {
-    minHeight: 64,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing(3),
-    paddingVertical: spacing(3),
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(3),
-  },
-  miniStatIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // ── Desktop sidebar ──────────────────────────────────────────────────────
+  const Sidebar = isDesktop && (
+    <View style={{ width: 300, flexShrink: 0, gap: spacing(5) }}>
+      <View
+        style={[
+          {
+            backgroundColor: colors.surface,
+            borderRadius: radii.xxl,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: spacing(6),
+            gap: spacing(4),
+          },
+          elevation,
+        ]}
+      >
+        <Text style={[typography.h2, { color: colors.textPrimary }]}>Overview</Text>
 
-  actionButton: {
-    minHeight: 46,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    paddingHorizontal: spacing(4),
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing(3),
-  },
-  actionButtonText: {
-    fontSize: 12.5,
-    fontWeight: '900',
-    letterSpacing: 0.2,
-  },
+        <View style={{ gap: spacing(3) }}>
+          <StatPill icon="book-outline"   label="Total Programs"    value={`${COURSES.length}`} />
+          <StatPill icon="search-outline" label="Search Results"    value={`${filteredCourses.length}`} />
+          <StatPill icon="school-outline" label="Institutions"      value="Multiple" />
+        </View>
 
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: spacing(2),
-  },
-  courseCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: radii.xl,
-    padding: spacing(5),
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing(3),
-  },
-  badge: {
-    paddingHorizontal: spacing(3),
-    paddingVertical: spacing(1.5),
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  badgeText: {
-    fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
-  chevronWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  courseName: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  metaRow: {
-    marginTop: spacing(2),
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(1.5),
-  },
-  cardFooter: {
-    marginTop: spacing(4),
-    paddingTop: spacing(3),
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+        <View style={{ height: 1, backgroundColor: colors.divider }} />
 
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIconWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resetButton: {
-    marginTop: spacing(5),
-    minHeight: 50,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    paddingHorizontal: spacing(5),
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing(2),
-  },
-  resetButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
+        <Text style={[typography.h2, { color: colors.textPrimary }]}>Quick Actions</Text>
+        <View style={{ gap: spacing(3) }}>
+          <SidebarAction icon="menu-outline"    label="Open Menu"         onPress={openMenu}            variant="primary" />
+          <SidebarAction icon="refresh-outline" label="Clear Search"      onPress={() => setSearch('')} />
+          <SidebarAction icon="school-outline"  label="All Institutions"  onPress={() => router.push('/student/institutions')} />
+        </View>
 
-  hoverLift: {
-    transform: [{ translateY: -1 }],
-  },
-  pressDown: {
-    opacity: 0.96,
-    transform: [{ scale: 0.98 }],
-  },
-});
+        {/* Fields legend */}
+        <View style={{ height: 1, backgroundColor: colors.divider }} />
+        <Text style={[typography.h2, { color: colors.textPrimary }]}>Fields</Text>
+        <View style={{ gap: spacing(2) }}>
+          {allFields.map((field) => {
+            const color = FIELD_COLORS[field] ?? colors.primary;
+            return (
+              <Pressable
+                key={field}
+                onPress={() => setSearch(field)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row' as const,
+                  alignItems: 'center' as const,
+                  gap: spacing(3),
+                  paddingHorizontal: spacing(3),
+                  paddingVertical: spacing(2),
+                  borderRadius: radii.lg,
+                  backgroundColor: `${color}14`,
+                  borderWidth: 1,
+                  borderColor: `${color}33`,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: color,
+                  }}
+                />
+                <Text style={[typography.label, { color, flex: 1 }]}>{field}</Text>
+                <Ionicons name="chevron-forward" size={13} color={color} />
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Tip */}
+        <View
+          style={{
+            padding: spacing(4),
+            backgroundColor: `${colors.primary}14`,
+            borderRadius: radii.lg,
+            borderLeftWidth: 3,
+            borderLeftColor: colors.primary,
+          }}
+        >
+          <Text style={[typography.caption, { color: colors.textSecondary, lineHeight: 18 }]}>
+            💡 Tap a field above or search broad terms like "engineering" or "media" to quickly filter programs.
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // ── Hero banner ────────────────────────────────────────────────────────────
+  const HeroBanner = (
+    <View
+      style={[
+        {
+          backgroundColor: colors.surface,
+          borderRadius: radii.xxl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: isMobile ? spacing(5) : spacing(7),
+          marginBottom: spacing(6),
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: spacing(4),
+        },
+        elevation,
+      ]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[typography.hero, { color: colors.textPrimary }]}>
+          Find your next course
+        </Text>
+        <Text
+          style={[
+            typography.body,
+            { color: colors.textSecondary, marginTop: spacing(2), maxWidth: 480 },
+          ]}
+        >
+          Explore programs across Botswana, compare institutions, and open details
+          to see which pathway fits your academic goals.
+        </Text>
+      </View>
+
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing(2),
+          paddingHorizontal: spacing(4),
+          paddingVertical: spacing(2),
+          borderRadius: radii.pill,
+          backgroundColor: `${colors.primary}22`,
+          borderWidth: 1,
+          borderColor: `${colors.primary}44`,
+          alignSelf: isMobile ? 'flex-start' : 'center',
+        }}
+      >
+        <Ionicons name="book-outline" size={15} color={colors.primary} />
+        <Text style={[typography.label, { color: colors.primary }]}>
+          {filteredCourses.length} result{filteredCourses.length === 1 ? '' : 's'}
+        </Text>
+      </View>
+    </View>
+  );
+
+  // ── Mobile stats strip ─────────────────────────────────────────────────────
+  const MobileStatsStrip = isMobile && (
+    <View style={{ flexDirection: 'row', gap: spacing(3), marginBottom: spacing(6), flexWrap: 'wrap' }}>
+      {[
+        { icon: 'book-outline' as const,   label: 'Programs', value: `${COURSES.length}` },
+        { icon: 'search-outline' as const, label: 'Results',  value: `${filteredCourses.length}` },
+        { icon: 'school-outline' as const, label: 'Institutions', value: 'Multiple' },
+      ].map((s) => (
+        <View
+          key={s.label}
+          style={{
+            flex: 1,
+            minWidth: 90,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing(2),
+            backgroundColor: colors.surface,
+            borderRadius: radii.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: spacing(3),
+          }}
+        >
+          <Ionicons name={s.icon} size={14} color={colors.primary} />
+          <View>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>{s.label}</Text>
+            <Text style={[typography.label, { color: colors.textPrimary }]}>{s.value}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+
+  // ── Field filter strip (mobile + tablet) ──────────────────────────────────
+  const FieldFilterStrip = !isDesktop && (
+    <View
+      style={{
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: spacing(2),
+        marginBottom: spacing(5),
+      }}
+    >
+      {allFields.map((field) => {
+        const color = FIELD_COLORS[field] ?? colors.primary;
+        const active = search.toLowerCase() === field.toLowerCase();
+        return (
+          <Pressable
+            key={field}
+            onPress={() => setSearch(active ? '' : field)}
+            style={({ pressed }) => ({
+              flexDirection: 'row' as const,
+              alignItems: 'center' as const,
+              gap: spacing(2),
+              paddingHorizontal: spacing(3),
+              paddingVertical: spacing(2),
+              borderRadius: radii.pill,
+              backgroundColor: active ? color : `${color}1A`,
+              borderWidth: 1,
+              borderColor: `${color}44`,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: active ? '#fff' : color,
+              }}
+            />
+            <Text
+              style={[
+                typography.caption,
+                { color: active ? '#fff' : color, fontWeight: '700' },
+              ]}
+            >
+              {field}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  // ── Search bar ─────────────────────────────────────────────────────────────
+  const SearchBar = (
+    <View style={{ marginBottom: spacing(6) }}>
+      <Text
+        style={[
+          typography.caption,
+          { color: colors.textMuted, letterSpacing: 0.5, marginBottom: spacing(2) },
+        ]}
+      >
+        SEARCH
+      </Text>
+      <View
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.surface,
+            borderRadius: radii.xl,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: spacing(4),
+            minHeight: 52,
+          },
+          elevation,
+        ]}
+      >
+        <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search courses, universities, fields..."
+          placeholderTextColor={colors.textMuted}
+          style={[
+            typography.body,
+            {
+              flex: 1,
+              marginLeft: spacing(3),
+              paddingVertical: spacing(3),
+              color: colors.textPrimary,
+            },
+          ]}
+          accessibilityLabel="Search courses"
+          returnKeyType="search"
+        />
+        {search.length > 0 && (
+          <Pressable
+            onPress={() => setSearch('')}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+            style={({ pressed }) => ({ padding: spacing(2), opacity: pressed ? 0.7 : 1 })}
+          >
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+
+  // ── Card grid ──────────────────────────────────────────────────────────────
+  const Grid =
+    filteredCourses.length === 0 ? (
+      <EmptyState onReset={() => setSearch('')} />
+    ) : (
+      <View>
+        <Text
+          style={[
+            typography.caption,
+            { color: colors.textMuted, letterSpacing: 0.5, marginBottom: spacing(3) },
+          ]}
+        >
+          COURSES
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing(4) }}>
+          {filteredCourses.map((course) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onPress={() => handleViewCourse(course.id)}
+            />
+          ))}
+        </View>
+      </View>
+    );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render — DashboardLayout owns: SafeAreaView, scroll, header, sidebar nav,
+  // dark blue theme, and menu button.
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <DashboardLayout
+      title="Courses"
+      subtitle="Explore programs across Botswana and beyond"
+      showPointsCard={false}
+    >
+      {/* Back + breadcrumb */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing(3),
+          marginBottom: spacing(6),
+        }}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={({ pressed }) => ({
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            gap: spacing(2),
+            paddingHorizontal: spacing(4),
+            paddingVertical: spacing(2),
+            borderRadius: radii.lg,
+            backgroundColor: colors.surfaceAlt,
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Ionicons name="arrow-back" size={17} color={colors.primary} />
+          <Text style={[typography.label, { color: colors.primary }]}>Back</Text>
+        </Pressable>
+
+        <Text style={[typography.caption, { color: colors.textMuted }]}>
+          Dashboard › Courses
+        </Text>
+      </View>
+
+      {/* Desktop: two-column; mobile/tablet: stacked */}
+      <View
+        style={{
+          flexDirection: isDesktop ? 'row' : 'column',
+          gap: spacing(8),
+          alignItems: 'flex-start',
+        }}
+      >
+        {/* Main column */}
+        <View style={{ flex: 1 }}>
+          {HeroBanner}
+          {MobileStatsStrip}
+          {FieldFilterStrip}
+          {SearchBar}
+          {Grid}
+        </View>
+
+        {/* Sidebar — desktop only */}
+        {Sidebar}
+      </View>
+    </DashboardLayout>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Exported Screen
+// ─────────────────────────────────────────────────────────────────────────────
+export default function CoursesScreen() {
+  return (
+    <StudentMenuProvider>
+      <CoursesContent />
+    </StudentMenuProvider>
+  );
+}
