@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStudentMenu } from './StudentMenu';
+import { usePathname } from 'expo-router';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Design System (Exported)
@@ -98,6 +99,8 @@ export default function DashboardLayout({
   const [navExpanded, setNavExpanded] = useState(true);
   const [showInstitutionModal, setShowInstitutionModal] = useState(false);
 
+  const pathname = usePathname();
+
   const breakpoint = useMemo<'mobile' | 'tablet' | 'desktop'>(() => {
     if (width < 768) return 'mobile';
     if (width < 1024) return 'tablet';
@@ -124,6 +127,8 @@ export default function DashboardLayout({
     { key: 'progress', label: 'Progress', icon: 'trending-up-outline' as const, href: '/student/progress' },
     { key: 'applications', label: 'Applications', icon: 'document-text-outline' as const, href: '/student/applications' },
   ], [openInstitutionModal]);
+
+
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
@@ -178,7 +183,9 @@ export default function DashboardLayout({
                   {navExpanded && (
                     <View style={{ padding: spacing(4), paddingTop: spacing(2), borderTopWidth: 1, borderTopColor: colors.divider }}>
                       {navItems.map((item) => {
-                        const isActive = item.key === 'dashboard';
+                        const isActive =
+  item.href &&
+  (pathname === item.href || pathname.startsWith(item.href));
                         return (
                           <Pressable
                             key={item.key}
