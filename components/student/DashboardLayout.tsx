@@ -246,7 +246,10 @@ export default function DashboardLayout({
       {/* Institutions Modal - Restored */}
       <Modal visible={showInstitutionModal} transparent animationType="fade" onRequestClose={closeInstitutionModal}>
         <Pressable style={modalStyles.overlay} onPress={closeInstitutionModal}>
-          <Pressable style={[modalStyles.container, { backgroundColor: colors.surface }]} onPress={(e) => e.stopPropagation()}>
+          <Pressable 
+  style={[modalStyles.container, { backgroundColor: colors.surface }]} 
+  onPress={() => {}}
+>
             <View style={modalStyles.header}>
               <Text style={[modalStyles.title, { color: colors.textPrimary }]}>Choose Institution Type</Text>
               <Pressable onPress={closeInstitutionModal} hitSlop={16}>
